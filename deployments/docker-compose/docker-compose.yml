@@ -39,6 +39,7 @@ services:
       - "8000:8000"
     volumes:
       - ../../:/app  # mount entire repo for hot reload
+      - upload_data:/app/uploads
     env_file:
       - ../../.env
     depends_on:
@@ -49,3 +50,4 @@ services:
 
 volumes:
   postgres_data:
+  upload_data:

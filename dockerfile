@@ -6,6 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Create the upload directory (optional but good practice)
+RUN mkdir -p /app/uploads && chown -R nobody:nogroup /app/uploads
+
 # Install system dependencies for psycopg2/asyncpg
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev && \
