@@ -1,3 +1,5 @@
+import os
+
 from celery import Celery
 
 from api.core.config import settings
@@ -8,9 +10,7 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
-if settings.CELERY_TASK_ALWAYS_EAGER:
-    celery_app.conf.task_always_eager = True
-
+celery_app.conf.task_always_eager = os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
 
 celery_app.conf.update(
     task_serializer="json",

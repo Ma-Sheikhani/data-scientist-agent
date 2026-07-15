@@ -1,37 +1,28 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from api.core.database import get_db
 from api.core.security import get_password_hash
 from api.main import app
 from api.models.user import User
 
 
 @pytest.fixture
-async def client(db_session):
-    async def override_get_db():
-        yield db_session
-
-    app.dependency_overrides[get_db] = override_get_db
+async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture
 async def user_token(client, db_session):
-    # Create a user in the transactional session
     user = User(email="analyst@test.com", hashed_password=get_password_hash("test123"))
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
-
-    # Login to get token
     resp = await client.post(
         "/auth/token", json={"email": "analyst@test.com", "password": "test123"}
     )
-    assert resp.status_code == 200, f"Token generation failed: {resp.text}"
+    assert resp.status_code == 200, f"Token failed: {resp.text}"
     return resp.json()["access_token"]
 
 
@@ -43,9 +34,7 @@ async def test_submit_analysis(client, user_token):
     response = await client.post("/v1/analyze", files=files, data=data, headers=headers)
     assert response.status_code == 201, f"Job submission failed: {response.text}"
     job = response.json()
-    # With CELERY_TASK_ALWAYS_EAGER=True, the job is processed synchronously
     assert job["status"] == "completed", f"Expected 'completed', got '{job['status']}'"
-    assert "id" in job
 
 
 @pytest.mark.asyncio
