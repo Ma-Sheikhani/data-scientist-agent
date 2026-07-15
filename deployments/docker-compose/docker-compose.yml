@@ -47,6 +47,47 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  worker:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    container_name: ds-worker
+    command: celery -A workers.celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - ../../:/app
+      - upload_data:/app/uploads
+    env_file:
+      - ../../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  flower:
+    image: mher/flower
+    command: celery flower --broker=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+
+  beat:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    container_name: ds-beat
+    command: celery -A workers.celery_app beat --loglevel=info
+    volumes:
+      - ../../:/app            # live code sync (dev)
+      - upload_data:/app/uploads
+    env_file:
+      - ../../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 
 volumes:
   postgres_data:

@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from workers.tasks import process_analysis
+
 from ..core.database import get_db
 from ..dependencies import get_current_user
 from ..models.job import Job, JobStatus
@@ -38,6 +40,7 @@ async def submit_analysis(
         status=JobStatus.PENDING,
     )
     db.add(job)
+    process_analysis.delay(str(job.id))
     await db.commit()
     await db.refresh(job)
 

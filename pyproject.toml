@@ -24,7 +24,9 @@ dependencies = [
     "python-multipart (>=0.0.32,<0.0.33)",
     "loguru (>=0.7.3,<0.8.0)",
     "email-validator (>=2.3.0,<3.0.0)",
-    "bcrypt (==3.2.2)"
+    "bcrypt (==3.2.2)",
+    "requests (>=2.34.2,<3.0.0)",
+    "pandas (>=3.0.3,<4.0.0)"
 ]
 
 
@@ -45,6 +47,8 @@ dev = [
     "testcontainers (>=4.14.2,<5.0.0)"
 ]
 
+[tool.poetry]
+package-mode = false
 
 [tool.black]
 line-length = 100
@@ -63,3 +67,7 @@ warn_unused_configs = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+pythonpath = ["."]
+
+[tool.poetry.group.dev.dependencies]
+testcontainers = {extras = ["postgres", "redis"], version = "^4.0"}
