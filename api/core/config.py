@@ -1,7 +1,10 @@
+"""Application configuration loaded from environment variables."""
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Project settings loaded from .env file."""
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
     PROJECT_NAME: str = "Data Scientist Agent"
@@ -15,4 +18,4 @@ class Settings(BaseSettings):
     CELERY_TASK_ALWAYS_EAGER: bool = False
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

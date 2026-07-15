@@ -1,3 +1,5 @@
+"""Endpoints for analysis job submission and status."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -23,6 +25,11 @@ async def submit_analysis(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Submit a CSV file and question for analysis."""
+    # Ensure filename exists
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File name is missing")
+
     # Validate file type
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
@@ -44,8 +51,6 @@ async def submit_analysis(
     await db.commit()
     await db.refresh(job)
 
-    # TODO: Enqueue Celery task (Day 3)
-
     return job
 
 
@@ -55,6 +60,7 @@ async def get_job_status(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Retrieve the current status of an analysis job."""
     result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == current_user.id))
     job = result.scalar_one_or_none()
     if not job:

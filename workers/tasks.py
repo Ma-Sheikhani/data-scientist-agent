@@ -2,7 +2,6 @@ import asyncio
 from typing import Optional
 
 import pandas as pd
-import pandas.errors
 from celery.utils.log import get_task_logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

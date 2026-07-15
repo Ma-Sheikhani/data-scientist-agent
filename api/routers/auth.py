@@ -1,3 +1,4 @@
+"""Endpoints for user registration and login."""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+    """Register a new user account."""
     # Check if user already exists
     result = await db.execute(select(User).where(User.email == user_in.email))
     existing = result.scalar_one_or_none()

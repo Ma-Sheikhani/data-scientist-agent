@@ -1,3 +1,4 @@
+"""Pydantic schemas for job data."""
 import uuid
 from datetime import datetime
 from typing import Optional

@@ -7,3 +7,5 @@ exclude =
     alembic,
     .venv,
     __init__.py
+
+ignore = D

@@ -65,7 +65,7 @@ services:
         condition: service_healthy
   flower:
     image: mher/flower
-    command: celery flower --broker=redis://redis:6379/0
+    command: celery --broker=redis://redis:6379/0 flower
     ports:
       - "5555:5555"
     depends_on:

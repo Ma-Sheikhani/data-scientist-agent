@@ -1,3 +1,4 @@
+"""User model for authentication."""
 import uuid
 
 from sqlalchemy import Boolean, String
