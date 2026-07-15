@@ -60,9 +60,6 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     needs: test               # optional: only run if unit tests pass
-    # Docker is already available on GitHub Actions runners.
-    services:                 # We don’t need the manually declared services anymore
-                              # because Testcontainers will manage them.
     steps:
       - uses: actions/checkout@v4
 
