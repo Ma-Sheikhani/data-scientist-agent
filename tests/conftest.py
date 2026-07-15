@@ -4,6 +4,18 @@ import pytest
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
+from api.core.database import Base, engine
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Optionally drop tables after all tests
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
 
 # Declare containers as session‑scoped so they are started once and reused for all tests.
 @pytest.fixture(scope="session")

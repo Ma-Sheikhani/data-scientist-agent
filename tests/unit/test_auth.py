@@ -1,42 +1,70 @@
-import uuid
+import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete, select
 
-import requests  # add to requirements.txt if not there
-
-API = "http://localhost:8000"
-
-
-def unique_email():
-    return f"test-{uuid.uuid4()}@example.com"
+from api.core.database import async_session_maker
+from api.main import app
+from api.models.user import User
 
 
-def test_register_user():
-    email = unique_email()
-    resp = requests.post(f"{API}/auth/register", json={"email": email, "password": "secret123"})
-    assert resp.status_code == 201
-    data = resp.json()
-    assert data["email"] == email
+# Use ASGI transport so we don't need a live server
+@pytest.fixture
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+
+# Clean the users table before each test
+@pytest.fixture(autouse=True)
+async def clean_users():
+    async with async_session_maker() as session:
+        async with session.begin():
+            await session.execute(delete(User))
+
+
+@pytest.mark.asyncio
+async def test_register_user(client):
+    response = await client.post(
+        "/auth/register", json={"email": "test-register@example.com", "password": "secret123"}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "test-register@example.com"
     assert "id" in data
 
 
-def test_register_duplicate():
-    email = unique_email()
-    requests.post(f"{API}/auth/register", json={"email": email, "password": "secret123"})
-    resp = requests.post(f"{API}/auth/register", json={"email": email, "password": "secret123"})
-    assert resp.status_code == 400
+@pytest.mark.asyncio
+async def test_register_duplicate(client):
+    # First registration
+    await client.post("/auth/register", json={"email": "dup@example.com", "password": "secret123"})
+    # Duplicate
+    response = await client.post(
+        "/auth/register", json={"email": "dup@example.com", "password": "secret123"}
+    )
+    assert response.status_code == 400
 
 
-def test_login_success():
-    email = unique_email()
-    requests.post(f"{API}/auth/register", json={"email": email, "password": "secret123"})
-    resp = requests.post(f"{API}/auth/token", json={"email": email, "password": "secret123"})
-    assert resp.status_code == 200
-    data = resp.json()
+@pytest.mark.asyncio
+async def test_login_success(client):
+    await client.post(
+        "/auth/register", json={"email": "login@example.com", "password": "secret123"}
+    )
+    response = await client.post(
+        "/auth/token", json={"email": "login@example.com", "password": "secret123"}
+    )
+    assert response.status_code == 200
+    data = response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
 
 
-def test_login_wrong_password():
-    email = unique_email()
-    requests.post(f"{API}/auth/register", json={"email": email, "password": "secret123"})
-    resp = requests.post(f"{API}/auth/token", json={"email": email, "password": "wrongpass"})
-    assert resp.status_code == 401
+@pytest.mark.asyncio
+async def test_login_wrong_password(client):
+    await client.post(
+        "/auth/register", json={"email": "wrong@example.com", "password": "secret123"}
+    )
+    response = await client.post(
+        "/auth/token", json={"email": "wrong@example.com", "password": "badpass"}
+    )
+    assert response.status_code == 401
