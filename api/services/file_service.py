@@ -1,4 +1,5 @@
 """File upload and cleanup service."""
+
 import os
 import uuid
 from pathlib import Path

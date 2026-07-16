@@ -1,4 +1,5 @@
 """Pydantic schemas for user data."""
+
 import uuid
 
 from pydantic import BaseModel, EmailStr

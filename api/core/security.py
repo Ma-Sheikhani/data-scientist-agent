@@ -1,4 +1,5 @@
 """Password hashing and JWT token handling."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
