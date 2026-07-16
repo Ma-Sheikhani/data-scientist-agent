@@ -8,19 +8,27 @@ The platform is a distributed, asynchronous service that accepts CSV uploads, en
 
 ## Diagram
 
-```mermaid
 graph TD
-    Client[Client (curl, Swagger, k6)] -->|JWT| API[FastAPI REST API]
-    API --> DB[(PostgreSQL)]
-    API --> Redis[(Redis)]
-    API --> FS[File Storage<br/>(/app/uploads)]
-    Redis --> Worker[Celery Worker]
+    Client["Client"]
+    API["FastAPI REST API"]
+    DB[(PostgreSQL)]
+    Redis[(Redis)]
+    FS["File Storage"]
+    Worker["Celery Worker"]
+    Sandbox["Sandbox Service"]
+    LLM["LLM API / vLLM"]
+    LangGraph["LangGraph Agent"]
+
+    Client -->|JWT| API
+    API --> DB
+    API --> Redis
+    API --> FS
+    Redis --> Worker
     Worker --> DB
     Worker --> FS
-    Worker -.->|future| Sandbox[Sandbox Service]
-    Worker -.->|future| LLM[LLM API / vLLM]
-    Worker -.->|future| LangGraph[LangGraph Agent]
-```
+    Worker -.->|future| Sandbox
+    Worker -.->|future| LLM
+    Worker -.->|future| LangGraph
 
 # Architecture Overview
 
