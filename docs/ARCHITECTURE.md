@@ -7,7 +7,7 @@ This document describes the high-level architecture of the **Data Scientist Agen
 The platform is a distributed, asynchronous service that accepts CSV uploads, enqueues background analysis jobs, and returns structured results. It is designed for reliability, observability, and future extensibility toward LLM-powered agentic workflows.
 
 ## Diagram
-
+```mermaid
 graph TD
     Client["Client"]
     API["FastAPI REST API"]
@@ -29,7 +29,7 @@ graph TD
     Worker -.->|future| Sandbox
     Worker -.->|future| LLM
     Worker -.->|future| LangGraph
-
+```
 # Architecture Overview
 
 ## Components
