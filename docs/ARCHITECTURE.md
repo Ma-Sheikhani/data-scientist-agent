@@ -1,10 +1,10 @@
 # Architecture
 
-This document describes the high‑level architecture of the **Data Scientist Agent** platform.
+This document describes the high-level architecture of the **Data Scientist Agent** platform.
 
 ## System Overview
 
-The platform is a distributed, asynchronous service that accepts CSV uploads, enqueues background analysis jobs, and returns structured results. It is designed for reliability, observability, and future extensibility toward LLM‑powered agentic workflows.
+The platform is a distributed, asynchronous service that accepts CSV uploads, enqueues background analysis jobs, and returns structured results. It is designed for reliability, observability, and future extensibility toward LLM-powered agentic workflows.
 
 ## Diagram
 
@@ -20,13 +20,14 @@ graph TD
     Worker -.->|future| Sandbox[Sandbox Service]
     Worker -.->|future| LLM[LLM API / vLLM]
     Worker -.->|future| LangGraph[LangGraph Agent]
+```
 
-
-    # Architecture Overview
+# Architecture Overview
 
 ## Components
 
 ### 1. FastAPI REST API (`api/`)
+
 Serves as the entry point for all client interactions.
 
 - Handles user authentication (JWT), file uploads, and job submission.
@@ -34,6 +35,7 @@ Serves as the entry point for all client interactions.
 - Built with async SQLAlchemy and Pydantic v2 for validation.
 
 ### 2. Celery Worker (`workers/`)
+
 Processes analysis jobs asynchronously from Redis.
 
 - Picks up analysis jobs from Redis and executes them asynchronously.
@@ -42,6 +44,7 @@ Processes analysis jobs asynchronously from Redis.
 - Supports retries, dead-letter queues, and graceful error handling.
 
 ### 3. PostgreSQL Database
+
 Stores persistent application data.
 
 - User accounts
@@ -51,18 +54,21 @@ Stores persistent application data.
 Database schema migrations are managed with Alembic.
 
 ### 4. Redis
+
 Provides messaging infrastructure.
 
 - Message broker for Celery job queues.
 - Result backend for Celery task status and polling.
 
 ### 5. File Storage
+
 Uploaded datasets are stored locally.
 
 - CSV files are saved to a shared volume (`/app/uploads`) accessible by both API and worker containers.
 - Planned migration to object storage (MinIO/S3) for production deployments.
 
 ### 6. Sandbox Service *(Planned – Week 2)*
+
 Provides secure execution of untrusted Python code.
 
 - Isolated environment for LLM-generated code.
@@ -70,6 +76,7 @@ Provides secure execution of untrusted Python code.
 - Restricts network access, filesystem permissions, CPU, and memory usage.
 
 ### 7. LLM / Agent Engine *(Planned – Weeks 2–3)*
+
 Responsible for intelligent data analysis.
 
 - LangGraph-based state machine for planning and execution.
@@ -98,8 +105,6 @@ FastAPI API
 JWT Access Token
 ```
 
----
-
 ## 2. Analysis Submission
 
 1. The client uploads:
@@ -118,8 +123,6 @@ POST /v1/analyze
 - creates a `Job` record with status `PENDING`
 - enqueues a Celery task (`process_analysis`)
 - returns the generated `job_id`
-
----
 
 ## 3. Background Processing
 
@@ -145,8 +148,6 @@ Finally:
 
 - Stores the resulting JSON.
 - Updates the status to `COMPLETED` or `FAILED`.
-
----
 
 ## 4. Result Polling
 
