@@ -1,11 +1,25 @@
-import pytest
+import json
+from unittest.mock import patch
 
 from agent.graph import agent_app
 from agent.state import AgentState, DataFrameInfo
 
 
-@pytest.mark.asyncio
-async def test_planner_returns_valid_plan():
+@patch("agent.graph.call_llm")
+def test_planner_returns_valid_plan(mock_call_llm):
+    # Return a valid JSON plan without any real API call
+    mock_call_llm.return_value = json.dumps(
+        {
+            "plan": [
+                {
+                    "action_type": "execute_code",
+                    "code": "import pandas as pd\nimport matplotlib.pyplot as plt\n...",
+                    "description": "Calculate correlation between sepal length and petal length",
+                }
+            ]
+        }
+    )
+
     state = AgentState(
         user_question="What is the correlation between sepal length and petal length?",
         dataframe_info=DataFrameInfo(
@@ -38,4 +52,4 @@ async def test_planner_returns_valid_plan():
     result = agent_app.invoke(state)
     assert len(result["plan"]) > 0
     assert result["plan"][0].action_type == "execute_code"
-    assert "corr" in result["plan"][0].code  # likely
+    assert "corr" in result["plan"][0].code or "correlation" in result["plan"][0].code
