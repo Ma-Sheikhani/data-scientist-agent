@@ -1,4 +1,5 @@
-FROM python:3.11-slim as base
+# FROM python:3.11-slim as base #Switch to this if outside Iran
+FROM docker.arvancloud.ir/python:3.11-slim as base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

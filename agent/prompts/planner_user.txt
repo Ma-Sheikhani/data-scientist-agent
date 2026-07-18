@@ -1,0 +1,8 @@
+Dataset columns: {{ columns }}
+Data types: {{ dtypes }}
+Sample rows (first 5):
+{{ sample_rows }}
+
+User question: {{ question }}
+
+Create an analysis plan.

@@ -88,7 +88,59 @@ services:
       redis:
         condition: service_healthy
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ds-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: ds-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - LLM_BACKEND=${LLM_BACKEND:-local}
+      - OLLAMA_MODEL=phi3:mini
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ "$$LLM_BACKEND" = "local" ]; then
+          echo "Pulling model: $$OLLAMA_MODEL"
+          ollama pull $$OLLAMA_MODEL
+        else
+          echo "Skipping local model pull (LLM_BACKEND=$$LLM_BACKEND)"
+        fi
+    restart: "no"
+
+  sandbox:
+    build:
+      context: ../../
+      dockerfile: sandbox/Dockerfile
+    container_name: ds-sandbox
+    ports:
+      - "8001:8001"
+    environment:
+      - MPLCONFIGDIR=/tmp
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
 
 volumes:
   postgres_data:
   upload_data:
+  ollama_data:
