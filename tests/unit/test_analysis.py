@@ -42,4 +42,6 @@ async def test_submit_analysis_unauthorized(client):
     files = {"file": ("test.csv", "a,b\n1,2\n", "text/csv")}
     data = {"question": "test"}
     response = await client.post("/v1/analyze", files=files, data=data)
-    assert response.status_code == 401, f"Expected 401, got {response.status_code}: {response.text}"
+    assert (
+        response.status_code == 401
+    ), f"Expected 401, got {response.status_code}: {response.text}"

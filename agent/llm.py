@@ -11,6 +11,8 @@ T = TypeVar("T", bound=BaseModel)
 
 
 # Overloads: tell mypy exactly what the return type is based on arguments
+
+# fmt: off
 @overload
 def call_llm(
     system_prompt: str,
@@ -31,6 +33,7 @@ def call_llm(
     pydantic_model: Type[T],
 ) -> T:
     ...
+# fmt: on
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))

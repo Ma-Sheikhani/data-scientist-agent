@@ -49,9 +49,17 @@ def test_reflector_complete(mock_llm):
         dataframe_info=DataFrameInfo(
             columns=["a"], dtypes={"a": "float64"}, sample_rows=[{"a": 1}]
         ),
-        plan=[CodeAction(action_type="execute_code", code="print(1)", description="print")],
+        plan=[
+            CodeAction(action_type="execute_code", code="print(1)", description="print")
+        ],
         execution_results=[
-            {"action_index": 0, "stdout": "1\n", "stderr": "", "error": None, "images": []}
+            {
+                "action_index": 0,
+                "stdout": "1\n",
+                "stderr": "",
+                "error": None,
+                "images": [],
+            }
         ],
         iteration_count=0,
     )
@@ -69,9 +77,17 @@ def test_final_answer(mock_llm):
         dataframe_info=DataFrameInfo(
             columns=["a"], dtypes={"a": "float64"}, sample_rows=[{"a": 1}]
         ),
-        plan=[CodeAction(action_type="execute_code", code="print(1)", description="print")],
+        plan=[
+            CodeAction(action_type="execute_code", code="print(1)", description="print")
+        ],
         execution_results=[
-            {"action_index": 0, "stdout": "1\n", "stderr": "", "error": None, "images": []}
+            {
+                "action_index": 0,
+                "stdout": "1\n",
+                "stderr": "",
+                "error": None,
+                "images": [],
+            }
         ],
         iteration_count=0,
     )

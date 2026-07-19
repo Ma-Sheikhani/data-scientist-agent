@@ -114,8 +114,12 @@ def planner_node(state: AgentState) -> dict:
         len(state.dataframe_info.columns),
         state.user_question[:80],
     )
-    user_prompt = PLANNER_USER_TEMPLATE.replace("{{ columns }}", str(state.dataframe_info.columns))
-    user_prompt = user_prompt.replace("{{ dtypes }}", json.dumps(state.dataframe_info.dtypes))
+    user_prompt = PLANNER_USER_TEMPLATE.replace(
+        "{{ columns }}", str(state.dataframe_info.columns)
+    )
+    user_prompt = user_prompt.replace(
+        "{{ dtypes }}", json.dumps(state.dataframe_info.dtypes)
+    )
     sample_rows_str = json.dumps(state.dataframe_info.sample_rows[:5], indent=2)
     user_prompt = user_prompt.replace("{{ sample_rows }}", sample_rows_str)
     user_prompt = user_prompt.replace("{{ question }}", state.user_question)
@@ -133,7 +137,11 @@ def planner_node(state: AgentState) -> dict:
     except Exception as e:
         logger.error("PLANNER | failed | error=%s", e)
         fallback_code = f"print('Planner failed: {e}')"
-        plan = [CodeAction(code=fallback_code, description="Fallback due to planner failure")]
+        plan = [
+            CodeAction(
+                code=fallback_code, description="Fallback due to planner failure"
+            )
+        ]
 
     return {
         "plan": plan,
@@ -224,7 +232,9 @@ def reflector_node(state: AgentState) -> dict[str, Any]:
 
     user_prompt = REFLECTOR_USER_TEMPLATE
     user_prompt = user_prompt.replace("{{ question }}", state.user_question)
-    user_prompt = user_prompt.replace("{{ columns }}", str(state.dataframe_info.columns))
+    user_prompt = user_prompt.replace(
+        "{{ columns }}", str(state.dataframe_info.columns)
+    )
     user_prompt = user_prompt.replace("{{ dtypes }}", str(state.dataframe_info.dtypes))
     user_prompt = user_prompt.replace("--- Executed Plan ---", steps_str)
 
@@ -265,8 +275,12 @@ def final_answer_node(state: AgentState) -> dict[str, Any]:
             f"figures: {len(res.get('images', []))}\n\n"
         )
 
-    user_prompt = FINAL_ANSWER_USER_TEMPLATE.replace("{{ question }}", state.user_question)
-    user_prompt = user_prompt.replace("{{ columns }}", str(state.dataframe_info.columns))
+    user_prompt = FINAL_ANSWER_USER_TEMPLATE.replace(
+        "{{ question }}", state.user_question
+    )
+    user_prompt = user_prompt.replace(
+        "{{ columns }}", str(state.dataframe_info.columns)
+    )
     user_prompt = user_prompt.replace("{{ dtypes }}", str(state.dataframe_info.dtypes))
     user_prompt = user_prompt.replace("--- Execution History ---", hist_str)
 
@@ -277,7 +291,11 @@ def final_answer_node(state: AgentState) -> dict[str, Any]:
     final_answer = (
         response
         if response
-        else {"summary": "Failed to parse final answer.", "statistics": {}, "figures": []}
+        else {
+            "summary": "Failed to parse final answer.",
+            "statistics": {},
+            "figures": [],
+        }
     )
     logger.info("FINAL_ANSWER | success=%s", response is not None)
     return {"final_answer": final_answer}

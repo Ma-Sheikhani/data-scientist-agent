@@ -20,7 +20,11 @@ async def test_health_check(client):
 
 @pytest.mark.asyncio
 async def test_register_and_login(client):
-    await client.post("/auth/register", json={"email": "ci@test.com", "password": "ci-pass"})
-    r = await client.post("/auth/token", json={"email": "ci@test.com", "password": "ci-pass"})
+    await client.post(
+        "/auth/register", json={"email": "ci@test.com", "password": "ci-pass"}
+    )
+    r = await client.post(
+        "/auth/token", json={"email": "ci@test.com", "password": "ci-pass"}
+    )
     assert r.status_code == 200
     assert "access_token" in r.json()

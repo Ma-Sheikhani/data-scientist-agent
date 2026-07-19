@@ -63,7 +63,9 @@ async def get_job_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Retrieve the current status of an analysis job."""
-    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == current_user.id))
+    result = await db.execute(
+        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
+    )
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")

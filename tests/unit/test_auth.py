@@ -16,7 +16,9 @@ async def test_register_user(client):
     response = await client.post(
         "/auth/register", json={"email": "test@example.com", "password": "secret123"}
     )
-    assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
+    assert (
+        response.status_code == 201
+    ), f"Expected 201, got {response.status_code}: {response.text}"
     data = response.json()
     assert data["email"] == "test@example.com"
     assert "id" in data
@@ -56,4 +58,6 @@ async def test_login_wrong_password(client):
     response = await client.post(
         "/auth/token", json={"email": "wrong@example.com", "password": "badpass"}
     )
-    assert response.status_code == 401, f"Expected 401, got {response.status_code}: {response.text}"
+    assert (
+        response.status_code == 401
+    ), f"Expected 401, got {response.status_code}: {response.text}"

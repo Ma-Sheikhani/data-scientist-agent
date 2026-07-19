@@ -23,7 +23,9 @@ def test_executor_node(mock_post):
         dataframe_info=DataFrameInfo(
             columns=["a"], dtypes={"a": "float64"}, sample_rows=[{"a": 1}]
         ),
-        plan=[CodeAction(action_type="execute_code", code="print(1+1)", description="add")],
+        plan=[
+            CodeAction(action_type="execute_code", code="print(1+1)", description="add")
+        ],
     )
     result = executor_node(state)
     assert len(result["execution_results"]) == 1

@@ -27,7 +27,9 @@ async def test_health_check(client):
 @pytest.mark.asyncio
 async def test_full_flow(client, db_session):
     # Register → login → upload → check status
-    await client.post("/auth/register", json={"email": "flow@test.com", "password": "flowpass"})
+    await client.post(
+        "/auth/register", json={"email": "flow@test.com", "password": "flowpass"}
+    )
     token_resp = await client.post(
         "/auth/token", json={"email": "flow@test.com", "password": "flowpass"}
     )
