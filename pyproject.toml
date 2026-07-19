@@ -31,7 +31,8 @@ dependencies = [
     "langgraph (>=1.2.9,<2.0.0)",
     "langchain-core (>=1.4.9,<2.0.0)",
     "openai (>=2.46.0,<3.0.0)",
-    "tenacity (>=9.1.4,<10.0.0)"
+    "tenacity (>=9.1.4,<10.0.0)",
+    "bandit (>=1.9.4,<2.0.0)"
 ]
 
 
@@ -69,6 +70,8 @@ line_length = 100
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["."]
+norecursedirs = ["scripts"]
+
 
 [tool.poetry.group.dev.dependencies]
 testcontainers = {extras = ["postgres", "redis"], version = "^4.0"}

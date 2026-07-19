@@ -140,11 +140,14 @@ def execute_code(code: str, timeout: int = 10) -> Dict[str, Any]:
 
         # Collect any .png files saved in the working directory
         images = []
-        for fname in os.listdir(tmpdir):
+        MAX_IMAGES = 10
+        for fname in sorted(os.listdir(tmpdir)):
             if fname.endswith(".png"):
                 with open(os.path.join(tmpdir, fname), "rb") as f:
                     b64 = base64.b64encode(f.read()).decode("utf-8")
                     images.append(b64)
+                if len(images) >= MAX_IMAGES:
+                    break
 
         return {
             "stdout": stdout,

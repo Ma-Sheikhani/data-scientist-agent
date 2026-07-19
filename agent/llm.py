@@ -1,38 +1,79 @@
+import json
+from typing import Optional, Type, TypeVar, overload
+
 from openai import OpenAI
+from pydantic import BaseModel, ValidationError
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from api.core.config import settings
+
+T = TypeVar("T", bound=BaseModel)
+
+
+# Overloads: tell mypy exactly what the return type is based on arguments
+@overload
+def call_llm(
+    system_prompt: str,
+    user_prompt: str,
+    response_format: Optional[dict] = None,
+    *,
+    pydantic_model: None = None,
+) -> str:
+    ...
+
+
+@overload
+def call_llm(
+    system_prompt: str,
+    user_prompt: str,
+    response_format: Optional[dict] = None,
+    *,
+    pydantic_model: Type[T],
+) -> T:
+    ...
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 def call_llm(
     system_prompt: str,
     user_prompt: str,
-    response_format: dict | None = None,
-) -> str:
-    # Select backend configuration
-    if settings.LLM_BACKEND == "openrouter":
-        base_url = settings.OPENROUTER_BASE_URL
-        api_key = settings.OPENROUTER_API_KEY
-        model = settings.OPENROUTER_MODEL
-    else:  # default to local
-        base_url = settings.LLM_BASE_URL_LOCAL
-        api_key = settings.LLM_API_KEY_LOCAL
-        model = settings.LLM_MODEL_LOCAL
-
-    client = OpenAI(base_url=base_url, api_key=api_key)
-
-    kwargs = {
-        "model": model,
+    response_format: Optional[dict] = None,
+    pydantic_model: Optional[Type[T]] = None,
+) -> "T | str":
+    client = OpenAI(
+        api_key=settings.OPENROUTER_API_KEY,
+        base_url=settings.OPENROUTER_BASE_URL,
+    )
+    kwargs: dict = {
+        "model": settings.OPENROUTER_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.0,
     }
-    # response_format only supported by some models; include if needed
     if response_format:
         kwargs["response_format"] = response_format
 
-    response = client.chat.completions.create(**kwargs)  # type: ignore[call-overload]
-    return response.choices[0].message.content  # type: ignore[no-any-return]
+    # The OpenAI library's type hints are very strict; ignore the arg-type check here
+    response = client.chat.completions.create(**kwargs)
+    raw: Optional[str] = response.choices[0].message.content
+    if raw is None:
+        raw = ""  # never return None
+
+    if pydantic_model:
+        try:
+            data = json.loads(raw)
+            return pydantic_model(**data)
+        except (json.JSONDecodeError, ValidationError):
+            if "```json" in raw:
+                json_str = raw.split("```json")[1].split("```")[0].strip()
+                data = json.loads(json_str)
+                return pydantic_model(**data)
+            elif "```" in raw:
+                json_str = raw.split("```")[1].split("```")[0].strip()
+                data = json.loads(json_str)
+                return pydantic_model(**data)
+            else:
+                raise
+    return raw

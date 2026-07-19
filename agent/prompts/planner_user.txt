@@ -8,3 +8,7 @@ Sample rows (first 5):
 User question: {{ question }}
 
 Create a plan. The data is already available as a CSV file at the path above. Use `pd.read_csv('{{ file_path }}')` to load it. Do NOT embed the data directly in the code. Do NOT use triple-quoted strings. Write only standard Python strings with proper escaping.
+
+- When generating plots, save each figure as `figure_0.png`, `figure_1.png`, etc., starting from 0 and incrementing with each plot. Always call `plt.savefig()` then `plt.close()`.
+- Use `print()` to output all key numerical results (correlations, means, model metrics, etc.) so they can be captured and used later.
+- If an execution error occurs, the system will allow you to correct the code in a later step, so provide your best initial plan without worrying about perfection.

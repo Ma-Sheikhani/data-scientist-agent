@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock, patch
 
 from agent.graph import executor_node
-from agent.state import AgentState, CodeAction, DataFrameInfo
+from agent.schemas import CodeAction
+from agent.state import AgentState, DataFrameInfo
 
 
 @patch("agent.graph.httpx.Client.post")

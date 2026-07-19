@@ -1,18 +1,12 @@
 from typing import Annotated, Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from agent.schemas import CodeAction
 
 
 def overwrite_list(_, new):
     return new
-
-
-class CodeAction(BaseModel):
-    """An action that executes Python code in the sandbox."""
-
-    action_type: str = Field("execute_code", alias="action_type")
-    code: str
-    description: str = ""  # what this code is supposed to do
 
 
 class DataFrameInfo(BaseModel):

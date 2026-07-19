@@ -3,13 +3,15 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any
 
 import httpx
 from langgraph.graph import END, StateGraph
 
 from agent.llm import call_llm
-from agent.state import AgentState, CodeAction
+from agent.schemas import CodeAction, PlanSchema, ReflectorResponse
+from agent.state import AgentState
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,7 +20,7 @@ SANDBOX_URL = os.getenv("SANDBOX_URL", "http://sandbox:8001")
 
 
 # ---------------------------------------------------------------------------
-# JSON / Python‑literal parsing helpers
+# JSON / Python‑literal parsing helpers (unchanged)
 # ---------------------------------------------------------------------------
 def sanitize_json_triple_quotes(json_str: str) -> str:
     """Replace triple-quoted Python strings with escaped double quotes."""
@@ -26,8 +28,6 @@ def sanitize_json_triple_quotes(json_str: str) -> str:
 
 
 def _fix_code_quotes(candidate: str) -> str:
-    """Replace single‑quoted code values inside JSON‑like strings with escaped double quotes."""
-
     def replace_code(match):
         code_content = match.group(1)
         escaped = code_content.replace("\\", "\\\\").replace('"', '\\"')
@@ -38,11 +38,7 @@ def _fix_code_quotes(candidate: str) -> str:
 
 
 def _parse_json_with_fallbacks(raw: str) -> dict | None:
-    """
-    Extract a dictionary from an LLM response.
-    Tries several parsing strategies; returns the dict if successful, otherwise None.
-    """
-    # Extract a candidate substring that looks like JSON
+    # ... unchanged ...
     candidate = None
     if "```json" in raw:
         candidate = raw.split("```json", 1)[1].split("```", 1)[0].strip()
@@ -54,7 +50,6 @@ def _parse_json_with_fallbacks(raw: str) -> dict | None:
             candidate = m.group(0).strip()
 
     if candidate:
-        # 1) Python literal – perfect for single‑quoted JSON
         try:
             result = ast.literal_eval(candidate)
             if isinstance(result, dict):
@@ -62,7 +57,6 @@ def _parse_json_with_fallbacks(raw: str) -> dict | None:
         except Exception:
             logger.debug("ast.literal_eval fallback failed", exc_info=True)
 
-        # 2) JSON with triple‑quote fix
         try:
             result = json.loads(sanitize_json_triple_quotes(candidate))
             if isinstance(result, dict):
@@ -70,7 +64,6 @@ def _parse_json_with_fallbacks(raw: str) -> dict | None:
         except json.JSONDecodeError:
             pass
 
-        # 3) Fix single‑quoted code strings + JSON
         try:
             result = json.loads(_fix_code_quotes(candidate))
             if isinstance(result, dict):
@@ -78,7 +71,6 @@ def _parse_json_with_fallbacks(raw: str) -> dict | None:
         except json.JSONDecodeError:
             pass
 
-    # Whole raw string attempts
     try:
         result = json.loads(sanitize_json_triple_quotes(raw))
         if isinstance(result, dict):
@@ -96,7 +88,7 @@ def _parse_json_with_fallbacks(raw: str) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
-# Prompt loading
+# Prompt loading (unchanged)
 # ---------------------------------------------------------------------------
 with open("agent/prompts/planner_system.txt", "r") as f:
     PLANNER_SYSTEM = f.read()
@@ -115,7 +107,13 @@ with open("agent/prompts/final_answer_user.txt", "r") as f:
 # ---------------------------------------------------------------------------
 # LangGraph nodes
 # ---------------------------------------------------------------------------
-def planner_node(state: AgentState) -> dict[str, Any]:
+def planner_node(state: AgentState) -> dict:
+    logger.info(
+        "PLANNER | iteration %d | columns=%d | question=%s",
+        state.iteration_count,
+        len(state.dataframe_info.columns),
+        state.user_question[:80],
+    )
     user_prompt = PLANNER_USER_TEMPLATE.replace("{{ columns }}", str(state.dataframe_info.columns))
     user_prompt = user_prompt.replace("{{ dtypes }}", json.dumps(state.dataframe_info.dtypes))
     sample_rows_str = json.dumps(state.dataframe_info.sample_rows[:5], indent=2)
@@ -123,19 +121,20 @@ def planner_node(state: AgentState) -> dict[str, Any]:
     user_prompt = user_prompt.replace("{{ question }}", state.user_question)
     user_prompt = user_prompt.replace("{{ file_path }}", state.file_path)
 
-    raw = call_llm(system_prompt=PLANNER_SYSTEM, user_prompt=user_prompt)
-
-    # Robust JSON parsing
     try:
-        response_json = json.loads(raw)
-    except json.JSONDecodeError:
-        if "```json" in raw:
-            raw = raw.split("```json")[1].split("```")[0].strip()
-            response_json = json.loads(raw)
-        else:
-            raise ValueError("Planner output is not valid JSON")
+        plan_model = call_llm(
+            system_prompt=PLANNER_SYSTEM,
+            user_prompt=user_prompt,
+            response_format={"type": "json_object"},
+            pydantic_model=PlanSchema,
+        )
+        plan = plan_model.plan
+        logger.info("PLANNER | success | plan size=%d", len(plan))
+    except Exception as e:
+        logger.error("PLANNER | failed | error=%s", e)
+        fallback_code = f"print('Planner failed: {e}')"
+        plan = [CodeAction(code=fallback_code, description="Fallback due to planner failure")]
 
-    plan = [CodeAction(**item) for item in response_json.get("plan", [])]
     return {
         "plan": plan,
         "iteration_count": state.iteration_count + 1,
@@ -143,33 +142,46 @@ def planner_node(state: AgentState) -> dict[str, Any]:
 
 
 def executor_node(state: AgentState) -> dict[str, Any]:
+    logger.info(
+        "EXECUTOR | iteration=%d | steps=%d",
+        state.iteration_count,
+        len(state.plan),
+    )
+    MAX_SANDBOX_RETRIES = 2
+
+    def _execute_with_retry(client, code, timeout):
+        last_exc = None
+        for attempt in range(MAX_SANDBOX_RETRIES + 1):
+            try:
+                resp = client.post(
+                    f"{SANDBOX_URL}/execute",
+                    json={"code": code, "timeout": timeout},
+                )
+                resp.raise_for_status()
+                return resp.json()
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                last_exc = e
+                logger.warning("Sandbox call failed (attempt %d): %s", attempt + 1, e)
+                time.sleep(2**attempt)
+        return {
+            "stdout": "",
+            "stderr": "",
+            "error": f"Sandbox failed after {MAX_SANDBOX_RETRIES + 1} attempts: {last_exc}",
+            "images": [],
+        }
+
     execution_results = []
     with httpx.Client(timeout=30.0) as client:
         for idx, action in enumerate(state.plan):
             if action.action_type != "execute_code":
                 continue
-            try:
-                resp = client.post(
-                    f"{SANDBOX_URL}/execute",
-                    json={"code": action.code, "timeout": 15},
-                )
-                resp.raise_for_status()
-                result = resp.json()
-            except httpx.HTTPStatusError as e:
-                result = {
-                    "stdout": "",
-                    "stderr": "",
-                    "error": f"Sandbox HTTP error: {e.response.status_code} - {e.response.text}",
-                    "images": [],
-                }
-            except httpx.RequestError as e:
-                result = {
-                    "stdout": "",
-                    "stderr": "",
-                    "error": f"Sandbox connection failed: {str(e)}",
-                    "images": [],
-                }
-
+            result = _execute_with_retry(client, action.code, timeout=15)
+            logger.info(
+                "EXECUTOR | step %d | code_len=%d | error=%s",
+                idx,
+                len(action.code),
+                result.get("error"),
+            )
             execution_results.append(
                 {
                     "action_index": idx,
@@ -178,7 +190,7 @@ def executor_node(state: AgentState) -> dict[str, Any]:
                     "code": action.code,
                     "stdout": result.get("stdout", ""),
                     "stderr": result.get("stderr", ""),
-                    "error": result.get("error"),
+                    "error": result.get("error") or "",
                     "images": result.get("images", []),
                 }
             )
@@ -187,10 +199,16 @@ def executor_node(state: AgentState) -> dict[str, Any]:
 
 
 def reflector_node(state: AgentState) -> dict[str, Any]:
+    logger.info(
+        "REFLECTOR | iteration=%d | steps_executed=%d",
+        state.iteration_count,
+        len(state.execution_results),
+    )
     if state.iteration_count >= state.max_iterations:
+        logger.info("REFLECTOR | max iterations reached -> forcing complete")
         return {"is_complete": True, "iteration_count": state.iteration_count}
 
-    # Build executed steps string
+    # Build executed steps string (unchanged)
     steps_str = ""
     for i, res in enumerate(state.execution_results):
         code = state.plan[i].code if i < len(state.plan) else "N/A"
@@ -210,33 +228,33 @@ def reflector_node(state: AgentState) -> dict[str, Any]:
     user_prompt = user_prompt.replace("{{ dtypes }}", str(state.dataframe_info.dtypes))
     user_prompt = user_prompt.replace("--- Executed Plan ---", steps_str)
 
-    raw = call_llm(system_prompt=REFLECTOR_SYSTEM, user_prompt=user_prompt)
-    logger.info(f"Reflector raw response: {raw[:500]}...")
-
-    response = _parse_json_with_fallbacks(raw)
-
-    if response is None:
-        logger.error(f"Could not parse reflector response: {raw}")
+    try:
+        reflector_model = call_llm(
+            system_prompt=REFLECTOR_SYSTEM,
+            user_prompt=user_prompt,
+            pydantic_model=ReflectorResponse,
+        )
+        is_complete = reflector_model.is_complete
+        logger.info("REFLECTOR | success | is_complete=%s", is_complete)
+    except Exception as e:
+        logger.error("REFLECTOR | failed | error=%s", e)
         return {"is_complete": True}
 
-    is_complete = response.get("is_complete", False)
     if is_complete:
         return {"is_complete": True}
-
-    revised_plan = response.get("revised_plan", [])
-    if not revised_plan:
-        return {"is_complete": True}
-
-    new_plan_actions = [CodeAction(**item) for item in revised_plan]
-    return {
-        "is_complete": False,
-        "plan": new_plan_actions,
-        "execution_results": [],
-        "iteration_count": state.iteration_count + 1,
-    }
+    else:
+        revised_plan = reflector_model.revised_plan
+        logger.info("REFLECTOR | new plan size=%d", len(revised_plan))
+        return {
+            "is_complete": False,
+            "plan": revised_plan,
+            "execution_results": [],
+            "iteration_count": state.iteration_count + 1,
+        }
 
 
 def final_answer_node(state: AgentState) -> dict[str, Any]:
+    logger.info("FINAL_ANSWER | steps=%d", len(state.execution_results))
     hist_str = ""
     for i, res in enumerate(state.execution_results):
         hist_str += (
@@ -253,7 +271,7 @@ def final_answer_node(state: AgentState) -> dict[str, Any]:
     user_prompt = user_prompt.replace("--- Execution History ---", hist_str)
 
     raw = call_llm(system_prompt=FINAL_ANSWER_SYSTEM, user_prompt=user_prompt)
-    logger.info(f"Final answer raw response: {raw[:500]}...")
+    logger.info("FINAL_ANSWER | raw response length=%d", len(raw))
 
     response = _parse_json_with_fallbacks(raw)
     final_answer = (
@@ -261,11 +279,12 @@ def final_answer_node(state: AgentState) -> dict[str, Any]:
         if response
         else {"summary": "Failed to parse final answer.", "statistics": {}, "figures": []}
     )
+    logger.info("FINAL_ANSWER | success=%s", response is not None)
     return {"final_answer": final_answer}
 
 
 # ---------------------------------------------------------------------------
-# Build the LangGraph agent
+# Build the LangGraph agent (unchanged)
 # ---------------------------------------------------------------------------
 workflow = StateGraph(AgentState)
 
