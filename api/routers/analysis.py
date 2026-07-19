@@ -1,8 +1,10 @@
 """Endpoints for analysis job submission and status."""
 
+import os
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,3 +68,13 @@ async def get_job_status(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@router.get("/v1/images/{job_id}/{filename}")
+async def get_image(job_id: str, filename: str):
+    # Path where images are stored
+    image_dir = f"/app/uploads/images/{job_id}"
+    file_path = os.path.join(image_dir, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(file_path, media_type="image/png")

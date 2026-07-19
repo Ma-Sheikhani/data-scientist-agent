@@ -1,0 +1,18 @@
+User question: {{ question }}
+
+Dataset columns: {{ columns }} (dtypes: {{ dtypes }})
+
+--- Executed Plan ---
+{% for step in executed_steps %}
+Step {{ step.index }}: {{ step.description }}
+Code:
+{{ step.code }}
+Output:
+- stdout: {{ step.stdout }}
+- stderr: {{ step.stderr }}
+- error: {{ step.error }}
+- images: {{ step.images | count }} figure(s)
+{% endfor %}
+--- End of execution results ---
+
+Is the analysis complete? If yes, return {"is_complete": true}. If not, return a revised plan.

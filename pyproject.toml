@@ -76,6 +76,7 @@ testcontainers = {extras = ["postgres", "redis"], version = "^4.0"}
 [tool.mypy]
 exclude = [
     "alembic/",
+    "sandbox",
 ]
 python_version = "3.13"
 strict = false
@@ -98,8 +99,6 @@ module = [
     "asyncpg.*",
     "sqlalchemy.*",
     "pydantic.*",
-    "alembic.*",
-    "alembic",
     "nest_asyncio",
 ]
 ignore_missing_imports = true

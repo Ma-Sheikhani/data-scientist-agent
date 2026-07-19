@@ -1,8 +1,10 @@
-Dataset columns: {{ columns }}
+Dataset file path: {{ file_path }}
+
+Columns: {{ columns }}
 Data types: {{ dtypes }}
 Sample rows (first 5):
 {{ sample_rows }}
 
 User question: {{ question }}
 
-Create an analysis plan.
+Create a plan. The data is already available as a CSV file at the path above. Use `pd.read_csv('{{ file_path }}')` to load it. Do NOT embed the data directly in the code. Do NOT use triple-quoted strings. Write only standard Python strings with proper escaping.

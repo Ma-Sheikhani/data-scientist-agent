@@ -104,6 +104,10 @@ def execute_code(code: str, timeout: int = 10) -> Dict[str, Any]:
         err_queue: multiprocessing.Queue[str] = multiprocessing.Queue()
 
         def target():
+            import matplotlib
+
+            matplotlib.use("Agg")
+
             # Redirect stdout/stderr
             sys.stdout = io.StringIO()
             sys.stderr = io.StringIO()

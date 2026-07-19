@@ -25,6 +25,7 @@ class AgentState(BaseModel):
     # User inputs
     user_question: str
     dataframe_info: DataFrameInfo
+    file_path: str = ""  # path to the uploaded CSV inside the container
 
     # Planner output
     plan: List[CodeAction] = []

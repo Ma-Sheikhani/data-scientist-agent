@@ -1,5 +1,9 @@
+import ast
 import json
+import logging
 import os
+import re
+from typing import Any
 
 import httpx
 from langgraph.graph import END, StateGraph
@@ -7,32 +11,121 @@ from langgraph.graph import END, StateGraph
 from agent.llm import call_llm
 from agent.state import AgentState, CodeAction
 
-SANDBOX_URL = os.getenv("SANDBOX_URL", "http://sandbox:8001")  # Docker service name
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+SANDBOX_URL = os.getenv("SANDBOX_URL", "http://sandbox:8001")
 
 
-# Load prompts
+# ---------------------------------------------------------------------------
+# JSON / Python‑literal parsing helpers
+# ---------------------------------------------------------------------------
+def sanitize_json_triple_quotes(json_str: str) -> str:
+    """Replace triple-quoted Python strings with escaped double quotes."""
+    return re.sub(r'"""(.*?)"""', r'\\"\1\\"', json_str, flags=re.DOTALL)
+
+
+def _fix_code_quotes(candidate: str) -> str:
+    """Replace single‑quoted code values inside JSON‑like strings with escaped double quotes."""
+
+    def replace_code(match):
+        code_content = match.group(1)
+        escaped = code_content.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"code": "{escaped}"'
+
+    pattern = r'"code":\s*\'([^\']*?)\'\s*(?=[,}\n])'
+    return re.sub(pattern, replace_code, candidate, flags=re.DOTALL)
+
+
+def _parse_json_with_fallbacks(raw: str) -> dict | None:
+    """
+    Extract a dictionary from an LLM response.
+    Tries several parsing strategies; returns the dict if successful, otherwise None.
+    """
+    # Extract a candidate substring that looks like JSON
+    candidate = None
+    if "```json" in raw:
+        candidate = raw.split("```json", 1)[1].split("```", 1)[0].strip()
+    elif "```" in raw:
+        candidate = raw.split("```", 1)[1].split("```", 1)[0].strip()
+    else:
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            candidate = m.group(0).strip()
+
+    if candidate:
+        # 1) Python literal – perfect for single‑quoted JSON
+        try:
+            result = ast.literal_eval(candidate)
+            if isinstance(result, dict):
+                return result
+        except Exception:
+            logger.debug("ast.literal_eval fallback failed", exc_info=True)
+
+        # 2) JSON with triple‑quote fix
+        try:
+            result = json.loads(sanitize_json_triple_quotes(candidate))
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+
+        # 3) Fix single‑quoted code strings + JSON
+        try:
+            result = json.loads(_fix_code_quotes(candidate))
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+
+    # Whole raw string attempts
+    try:
+        result = json.loads(sanitize_json_triple_quotes(raw))
+        if isinstance(result, dict):
+            return result
+    except json.JSONDecodeError:
+        pass
+    try:
+        result = ast.literal_eval(raw)
+        if isinstance(result, dict):
+            return result
+    except Exception:
+        logger.debug("Final ast.literal_eval fallback failed", exc_info=True)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Prompt loading
+# ---------------------------------------------------------------------------
 with open("agent/prompts/planner_system.txt", "r") as f:
     PLANNER_SYSTEM = f.read()
 with open("agent/prompts/planner_user.txt", "r") as f:
     PLANNER_USER_TEMPLATE = f.read()
+with open("agent/prompts/reflector_system.txt", "r") as f:
+    REFLECTOR_SYSTEM = f.read()
+with open("agent/prompts/reflector_user.txt", "r") as f:
+    REFLECTOR_USER_TEMPLATE = f.read()
+with open("agent/prompts/final_answer_system.txt", "r") as f:
+    FINAL_ANSWER_SYSTEM = f.read()
+with open("agent/prompts/final_answer_user.txt", "r") as f:
+    FINAL_ANSWER_USER_TEMPLATE = f.read()
 
 
-def planner_node(state: AgentState) -> dict:
-    # Build user prompt
+# ---------------------------------------------------------------------------
+# LangGraph nodes
+# ---------------------------------------------------------------------------
+def planner_node(state: AgentState) -> dict[str, Any]:
     user_prompt = PLANNER_USER_TEMPLATE.replace("{{ columns }}", str(state.dataframe_info.columns))
     user_prompt = user_prompt.replace("{{ dtypes }}", json.dumps(state.dataframe_info.dtypes))
     sample_rows_str = json.dumps(state.dataframe_info.sample_rows[:5], indent=2)
     user_prompt = user_prompt.replace("{{ sample_rows }}", sample_rows_str)
     user_prompt = user_prompt.replace("{{ question }}", state.user_question)
+    user_prompt = user_prompt.replace("{{ file_path }}", state.file_path)
 
-    # Call LLM
-    raw = call_llm(
-        system_prompt=PLANNER_SYSTEM,
-        user_prompt=user_prompt,
-        # response_format={"type": "json_object"},  # works for gpt-4o-mini
-    )
+    raw = call_llm(system_prompt=PLANNER_SYSTEM, user_prompt=user_prompt)
 
-    # Parse JSON (with fallback)
+    # Robust JSON parsing
     try:
         response_json = json.loads(raw)
     except json.JSONDecodeError:
@@ -43,22 +136,21 @@ def planner_node(state: AgentState) -> dict:
             raise ValueError("Planner output is not valid JSON")
 
     plan = [CodeAction(**item) for item in response_json.get("plan", [])]
-    return {"plan": plan, "iteration_count": state.iteration_count + 1}
+    return {
+        "plan": plan,
+        "iteration_count": state.iteration_count + 1,
+    }
 
 
-def executor_node(state: AgentState) -> dict:
-    """Execute each code action in the plan by calling the sandbox."""
-    sandbox_url = os.getenv("SANDBOX_URL", "http://sandbox:8001")
+def executor_node(state: AgentState) -> dict[str, Any]:
     execution_results = []
-
     with httpx.Client(timeout=30.0) as client:
         for idx, action in enumerate(state.plan):
             if action.action_type != "execute_code":
                 continue
-
             try:
                 resp = client.post(
-                    f"{sandbox_url}/execute",
+                    f"{SANDBOX_URL}/execute",
                     json={"code": action.code, "timeout": 15},
                 )
                 resp.raise_for_status()
@@ -94,22 +186,87 @@ def executor_node(state: AgentState) -> dict:
     return {"execution_results": execution_results}
 
 
-def reflector_node(state: AgentState) -> dict:
-    # If all actions have been executed, we are done
-    if len(state.execution_results) >= len(state.plan) and len(state.plan) > 0:
+def reflector_node(state: AgentState) -> dict[str, Any]:
+    if state.iteration_count >= state.max_iterations:
+        return {"is_complete": True, "iteration_count": state.iteration_count}
+
+    # Build executed steps string
+    steps_str = ""
+    for i, res in enumerate(state.execution_results):
+        code = state.plan[i].code if i < len(state.plan) else "N/A"
+        steps_str += (
+            f"Step {i}: {res.get('description', 'Unknown')}\n"
+            f"Code:\n```\n{code}\n```\n"
+            f"Output:\n"
+            f"- stdout: {res.get('stdout', '')}\n"
+            f"- stderr: {res.get('stderr', '')}\n"
+            f"- error: {res.get('error', '')}\n"
+            f"- images: {len(res.get('images', []))} figure(s)\n\n"
+        )
+
+    user_prompt = REFLECTOR_USER_TEMPLATE
+    user_prompt = user_prompt.replace("{{ question }}", state.user_question)
+    user_prompt = user_prompt.replace("{{ columns }}", str(state.dataframe_info.columns))
+    user_prompt = user_prompt.replace("{{ dtypes }}", str(state.dataframe_info.dtypes))
+    user_prompt = user_prompt.replace("--- Executed Plan ---", steps_str)
+
+    raw = call_llm(system_prompt=REFLECTOR_SYSTEM, user_prompt=user_prompt)
+    logger.info(f"Reflector raw response: {raw[:500]}...")
+
+    response = _parse_json_with_fallbacks(raw)
+
+    if response is None:
+        logger.error(f"Could not parse reflector response: {raw}")
         return {"is_complete": True}
-    # Otherwise, just increment iteration (planner already incremented)
-    # and let the loop continue. But with the stub, we shouldn't hit this.
-    return {}
 
+    is_complete = response.get("is_complete", False)
+    if is_complete:
+        return {"is_complete": True}
 
-def final_answer_node(state: AgentState) -> dict:
+    revised_plan = response.get("revised_plan", [])
+    if not revised_plan:
+        return {"is_complete": True}
+
+    new_plan_actions = [CodeAction(**item) for item in revised_plan]
     return {
-        "final_answer": {"summary": "Analysis completed (stub).", "figures": [], "statistics": []}
+        "is_complete": False,
+        "plan": new_plan_actions,
+        "execution_results": [],
+        "iteration_count": state.iteration_count + 1,
     }
 
 
-# Build graph
+def final_answer_node(state: AgentState) -> dict[str, Any]:
+    hist_str = ""
+    for i, res in enumerate(state.execution_results):
+        hist_str += (
+            f"Step {i}: {res.get('description', '')}\n"
+            f"stdout: {res.get('stdout', '')}\n"
+            f"stderr: {res.get('stderr', '')}\n"
+            f"error: {res.get('error', '')}\n"
+            f"figures: {len(res.get('images', []))}\n\n"
+        )
+
+    user_prompt = FINAL_ANSWER_USER_TEMPLATE.replace("{{ question }}", state.user_question)
+    user_prompt = user_prompt.replace("{{ columns }}", str(state.dataframe_info.columns))
+    user_prompt = user_prompt.replace("{{ dtypes }}", str(state.dataframe_info.dtypes))
+    user_prompt = user_prompt.replace("--- Execution History ---", hist_str)
+
+    raw = call_llm(system_prompt=FINAL_ANSWER_SYSTEM, user_prompt=user_prompt)
+    logger.info(f"Final answer raw response: {raw[:500]}...")
+
+    response = _parse_json_with_fallbacks(raw)
+    final_answer = (
+        response
+        if response
+        else {"summary": "Failed to parse final answer.", "statistics": {}, "figures": []}
+    )
+    return {"final_answer": final_answer}
+
+
+# ---------------------------------------------------------------------------
+# Build the LangGraph agent
+# ---------------------------------------------------------------------------
 workflow = StateGraph(AgentState)
 
 workflow.add_node("planner", planner_node)
@@ -118,7 +275,6 @@ workflow.add_node("reflector", reflector_node)
 workflow.add_node("final_answer", final_answer_node)
 
 workflow.set_entry_point("planner")
-
 workflow.add_edge("planner", "executor")
 workflow.add_edge("executor", "reflector")
 workflow.add_conditional_edges(
