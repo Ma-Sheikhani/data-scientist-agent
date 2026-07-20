@@ -74,3 +74,12 @@ data/
 .env.production
 secrets/
 *.csv
+
+
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/

@@ -19,3 +19,9 @@
 ## Scaling
 - Increase Celery workers: `docker compose up -d --scale worker=3`
 - In Kubernetes, adjust HPA parameters in the Helm chart.
+
+## Agent Operations
+- **Adjust max iterations:** set `MAX_ITERATIONS` environment variable (default 3)
+- **Agent timeout:** `AGENT_TIMEOUT` (seconds, default 300)
+- **Sandbox URL:** `SANDBOX_URL` (default http://sandbox:8001)
+- **View agent trace:** Celery worker logs, or Langfuse dashboard (if configured)
