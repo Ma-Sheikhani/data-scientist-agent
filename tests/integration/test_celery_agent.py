@@ -9,8 +9,7 @@ from sqlalchemy import delete, select
 
 from api.core.database import async_session_maker
 from api.models.job import Job, JobStatus
-from api.services.file_service import UPLOAD_DIR
-from workers.tasks import _run_analysis  # <-- internal function, no Celery binding
+from workers.tasks import _run_analysis
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +45,7 @@ async def test_process_analysis_success():
         with (
             patch("workers.tasks.agent_app") as mock_agent,
             patch("workers.tasks.pd.read_csv") as mock_read_csv,
-            patch(str(UPLOAD_DIR), upload_dir),
+            patch("api.services.file_service.UPLOAD_DIR", upload_dir),
         ):
             mock_agent.invoke.return_value = {
                 "final_answer": {

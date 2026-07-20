@@ -36,30 +36,42 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
       - name: Install dependencies
         run: |
           pip install poetry
           poetry install --no-interaction
+
       - name: Lint with flake8
         run: poetry run flake8 .
+
       - name: Check formatting with black
         run: poetry run black --check .
+
       - name: Run unit tests with coverage
         env:
           DATABASE_URL: postgresql+asyncpg://agent:agentpass@localhost:5432/dsagent
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/1
           SECRET_KEY: testsecret
-        run: poetry run pytest -v --cov=api --cov=workers --cov-report=xml --cov-fail-under=70
-
+        run: poetry run pytest tests/unit -v --cov=api --cov=workers --cov-report=xml --cov-fail-under=70
 
   integration-tests:
     runs-on: ubuntu-latest
-    needs: test               # optional – only runs if lint/unit tests pass
+    needs: test
 
     services:
       postgres:
@@ -94,10 +106,18 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
       - name: Install dependencies
         run: |
           pip install poetry
-          poetry install --no-interaction --with dev
+          poetry install --no-interaction
 
       - name: Run integration tests
         env:
@@ -105,6 +125,5 @@ jobs:
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/1
           SECRET_KEY: test-secret-for-ci
-          CELERY_TASK_ALWAYS_EAGER: "True"
-        run: |
-          poetry run pytest tests/ -v --tb=short
+          CELERY_TASK_ALWAYS_EAGER: "True"   # only needed if you start calling .delay() in tests
+        run: poetry run pytest tests/integration -v --tb=short

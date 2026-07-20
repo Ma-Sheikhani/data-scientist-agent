@@ -1,5 +1,4 @@
 import pytest
-from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from api.core.security import get_password_hash
@@ -48,19 +47,28 @@ async def test_submit_analysis_unauthorized(client):
     ), f"Expected 401, got {response.status_code}: {response.text}"
 
 
-def test_get_job_status_not_found_sync():
-    with TestClient(app) as client:
-        # Register and login via the API
-        email = "notfound2@test.com"
-        resp = client.post("/auth/register", json={"email": email, "password": "test"})
+@pytest.mark.asyncio
+async def test_get_job_status_not_found():
+    import uuid
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        # Register a new user via the API
+        email = "notfound3@test.com"
+        resp = await client.post(
+            "/auth/register", json={"email": email, "password": "test"}
+        )
         assert resp.status_code == 201
-        resp = client.post("/auth/token", json={"email": email, "password": "test"})
+
+        # Login to get a token
+        resp = await client.post(
+            "/auth/token", json={"email": email, "password": "test"}
+        )
         token = resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
         # Request a non‑existent job ID
-        import uuid
-
         fake_id = str(uuid.uuid4())
-        resp = client.get(f"/v1/analyze/{fake_id}/status", headers=headers)
+        resp = await client.get(f"/v1/analyze/{fake_id}/status", headers=headers)
         assert resp.status_code == 404
