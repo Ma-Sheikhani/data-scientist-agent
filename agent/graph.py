@@ -22,6 +22,14 @@ SANDBOX_URL = os.getenv("SANDBOX_URL", "http://sandbox:8001")
 # ---------------------------------------------------------------------------
 # JSON / Python‑literal parsing helpers (unchanged)
 # ---------------------------------------------------------------------------
+def strip_json_comments(text: str) -> str:
+    # Remove // single-line comments
+    text = re.sub(r"//.*", "", text)
+    # Remove /* multi-line comments */
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    return text
+
+
 def sanitize_json_triple_quotes(json_str: str) -> str:
     """Replace triple-quoted Python strings with escaped double quotes."""
     return re.sub(r'"""(.*?)"""', r'\\"\1\\"', json_str, flags=re.DOTALL)
