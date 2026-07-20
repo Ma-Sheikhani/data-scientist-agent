@@ -54,7 +54,7 @@ jobs:
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/1
           SECRET_KEY: testsecret
-        run: poetry run pytest tests/unit -v --cov=api --cov=workers --cov-report=xml --cov-fail-under=70
+        run: poetry run pytest -v --cov=api --cov=workers --cov-report=xml --cov-fail-under=70
 
 
   integration-tests:
