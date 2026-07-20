@@ -284,8 +284,19 @@ def final_answer_node(state: AgentState) -> dict[str, Any]:
     user_prompt = user_prompt.replace("{{ dtypes }}", str(state.dataframe_info.dtypes))
     user_prompt = user_prompt.replace("--- Execution History ---", hist_str)
 
-    raw = call_llm(system_prompt=FINAL_ANSWER_SYSTEM, user_prompt=user_prompt)
-    logger.info("FINAL_ANSWER | raw response length=%d", len(raw))
+    try:
+        raw = call_llm(system_prompt=FINAL_ANSWER_SYSTEM, user_prompt=user_prompt)
+        logger.info("FINAL_ANSWER | raw response length=%d", len(raw))
+    except Exception as e:
+        logger.error("FINAL_ANSWER | LLM call failed: %s", e)
+        return {
+            "final_answer": {
+                "summary": "Failed to generate final answer due to LLM error.",
+                "statistics": {},
+                "figures": [],
+                "tables": [],
+            }
+        }
 
     response = _parse_json_with_fallbacks(raw)
     final_answer = (

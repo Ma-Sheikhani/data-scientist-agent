@@ -35,6 +35,12 @@ IMPORTANT: Do NOT use triple-quoted strings in code. Use single-quoted strings o
 
 ADDITIONAL RELIABILITY RULES:
 - The CSV file path will be provided in the user prompt. Use it exactly with `pd.read_csv(path)`. Do not hardcode any other path.
-- For plots, name the files `figure_0.png`, `figure_1.png`, etc., starting from 0 and incrementing across all steps. After each `plt.savefig()`, call `plt.close()` to free memory.
+- For plots, name the files `figure_0.png`, `figure_1.png`, etc., starting from 0 and incrementing across all steps. After each `plt.savefig()`, call `plt.close()` to free memory and never use 'plt.show()'.
 - Use `print()` to output any key numerical results (correlation, coefficients, summary statistics) so they can be read later.
 - If an execution error occurs, the system will give you a chance to correct the code, so it's okay if the first plan is not perfect – just provide a reasonable starting point.
+
+*** CRITICAL RULE FOR STATISTICS ***
+When you compute aggregate statistics (mean, median, max, etc.), you MUST print every numerical value in a clearly labelled format. For example:
+  print(f"Mean petal length Setosa: {setosa_mean}")
+  print(f"Maximum petal length: {max_petal}")
+Do NOT only print the category name; print the actual numeric result next to it.

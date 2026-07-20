@@ -10,6 +10,9 @@ def _get_upload_dir() -> Path:
     return Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
 
 
+UPLOAD_DIR: Path = _get_upload_dir()
+
+
 def save_upload_file(file_content: bytes, original_filename: str) -> str:
     upload_dir = _get_upload_dir()
     upload_dir.mkdir(parents=True, exist_ok=True)

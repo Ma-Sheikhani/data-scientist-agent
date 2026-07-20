@@ -1,13 +1,6 @@
 User question: {{ question }}
 Dataset: {{ columns }} ({{ dtypes }})
 
-Execution history:
-{% for res in execution_results %}
-Step {{ loop.index0 }}: {{ res.description }}
-stdout: {{ res.stdout }}
-stderr: {{ res.stderr }}
-error: {{ res.error }}
-figures: {{ res.images | count }}
-{% endfor %}
+--- Execution History ---
 
 Please produce the final answer JSON.

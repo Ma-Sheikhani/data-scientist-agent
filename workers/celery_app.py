@@ -2,6 +2,7 @@ import os
 
 from celery import Celery
 
+import workers.tasks  # noqa: F401  # ensures tasks are discovered
 from api.core.config import settings
 
 celery_app = Celery(
@@ -9,6 +10,7 @@ celery_app = Celery(
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
 )
+
 
 celery_app.conf.task_always_eager = (
     os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
@@ -26,9 +28,9 @@ celery_app.conf.update(
 )
 
 
-celery_app.conf.beat_schedule = {
-    "cleanup-old-jobs": {
-        "task": "workers.tasks.cleanup_old_jobs",
-        "schedule": 3600.0,  # every hour (in seconds)
-    },
-}
+# celery_app.conf.beat_schedule = {
+#     "cleanup-old-jobs": {
+#         "task": "workers.tasks.cleanup_old_jobs",
+#         "schedule": 3600.0,  # every hour (in seconds)
+#     },
+# }

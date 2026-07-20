@@ -1,10 +1,11 @@
 """Endpoints for analysis job submission and status."""
 
+import base64
 import os
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,8 @@ from ..models.job import Job, JobStatus
 from ..models.user import User
 from ..schemas.job import JobStatusResponse
 from ..services.file_service import save_upload_file
+
+SANDBOX_URL = os.getenv("SANDBOX_URL", "http://sandbox:8001")
 
 router = APIRouter(prefix="/v1", tags=["analysis"])
 
@@ -49,9 +52,9 @@ async def submit_analysis(
         status=JobStatus.PENDING,
     )
     db.add(job)
-    process_analysis.delay(str(job.id))
     await db.commit()
     await db.refresh(job)
+    process_analysis.delay(str(job.id))
 
     return job
 
@@ -72,11 +75,36 @@ async def get_job_status(
     return job
 
 
-@router.get("/v1/images/{job_id}/{filename}")
-async def get_image(job_id: str, filename: str):
-    # Path where images are stored
-    image_dir = f"/app/uploads/images/{job_id}"
-    file_path = os.path.join(image_dir, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Image not found")
-    return FileResponse(file_path, media_type="image/png")
+@router.get("/analyze/{job_id}/figure/{index}")
+async def get_figure(
+    job_id: uuid.UUID,
+    index: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
+    )
+    job = result.scalar_one_or_none()
+    if not job or not job.result:
+        raise HTTPException(status_code=404, detail="Job or figure not found")
+
+    images = job.result.get("images", [])
+    if index < 0 or index >= len(images):
+        raise HTTPException(status_code=404, detail="Figure index out of range")
+
+    img_bytes = base64.b64decode(images[index])
+    return Response(content=img_bytes, media_type="image/png")
+
+
+@router.get("/agent-health")
+async def agent_health():
+    import httpx
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{SANDBOX_URL}/docs")  # just a ping
+        sandbox_ok = resp.status_code == 200
+    except Exception:
+        sandbox_ok = False
+    return {"sandbox": sandbox_ok}

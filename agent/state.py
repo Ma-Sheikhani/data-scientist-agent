@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -25,7 +25,7 @@ class AgentState(BaseModel):
     plan: List[CodeAction] = []
 
     # Execution results
-    execution_results: Annotated[List[Dict[str, Any]], overwrite_list] = []
+    execution_results: List[Dict[str, Any]] = []
     # Each dict: {"action_index": int, "stdout": str, "stderr": str,
     #  "error": str, "images": List[str] (base64)}
 
