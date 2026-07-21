@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     # LLM configuration
     LLM_BACKEND: str = "local"  # "local" or "openrouter"
+    LLM_MAX_TOKENS: int = 2048
 
     # Local Ollama
     LOCAL_BASE_URL: str = "http://ollama:11434/v1"

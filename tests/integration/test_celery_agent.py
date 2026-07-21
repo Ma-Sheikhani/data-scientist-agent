@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 
 from api.core.database import async_session_maker
 from api.models.job import Job, JobStatus
-from workers.tasks import _run_analysis
+from workers.tasks import perform_analysis
 
 
 @pytest.fixture(autouse=True)
@@ -65,7 +65,7 @@ async def test_process_analysis_success():
             )
 
             # Call the internal analysis function (no Celery)
-            await _run_analysis(job_id)
+            perform_analysis(job_id)
 
         # Verify job result
         async with async_session_maker() as session:

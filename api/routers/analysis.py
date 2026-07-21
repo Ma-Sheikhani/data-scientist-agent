@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.core.metrics import ANALYSIS_REQUESTS
 from workers.tasks import process_analysis
 
 from ..core.database import get_db
@@ -56,6 +57,8 @@ async def submit_analysis(
     await db.refresh(job)
     process_analysis.delay(str(job.id))
 
+    # Increment metric
+    ANALYSIS_REQUESTS.labels(status="submitted").inc()
     return job
 
 

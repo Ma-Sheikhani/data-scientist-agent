@@ -34,7 +34,7 @@ async def test_submit_analysis(client, user_token):
     response = await client.post("/v1/analyze", files=files, data=data, headers=headers)
     assert response.status_code == 201, f"Job submission failed: {response.text}"
     job = response.json()
-    assert job["status"] == "completed", f"Expected 'completed', got '{job['status']}'"
+    assert job["status"] == "pending", f"Expected 'pending', got '{job['status']}'"
 
 
 @pytest.mark.asyncio

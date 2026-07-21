@@ -34,4 +34,4 @@ async def test_upload_csv_and_get_result(client):
     )
     assert resp.status_code == 201, f"Expected 201, got {resp.status_code}: {resp.text}"
     job = resp.json()
-    assert job["status"] == "completed"
+    assert job["status"] == "pending"

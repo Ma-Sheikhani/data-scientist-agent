@@ -12,7 +12,7 @@ import api.routers.analysis as analysis_router  # to patch process_analysis.dela
 from api.core.config import settings
 from api.core.database import Base, get_db
 from api.main import app
-from workers.tasks import _run_analysis
+from workers.tasks import perform_analysis
 
 # Apply nested async loop support (must happen early)
 nest_asyncio.apply()
@@ -88,7 +88,7 @@ def mock_celery_task(db_session, monkeypatch):
     immediately using the same transactional session."""
 
     async def _fake_delay(job_id):
-        await _run_analysis(job_id, session=db_session)
+        perform_analysis(job_id)
 
     def _delay(job_id):
         """Synchronous wrapper that can be called by the endpoint."""

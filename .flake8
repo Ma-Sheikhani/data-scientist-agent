@@ -8,4 +8,4 @@ exclude =
     .venv,
     __init__.py
 
-ignore = D
+ignore = D, W503

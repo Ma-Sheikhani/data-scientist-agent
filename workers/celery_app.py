@@ -2,7 +2,6 @@ import os
 
 from celery import Celery
 
-import workers.tasks  # noqa: F401  # ensures tasks are discovered
 from api.core.config import settings
 
 celery_app = Celery(
@@ -27,6 +26,7 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,  # one task at a time
 )
 
+celery_app.conf.imports = ("workers.tasks",)
 
 # celery_app.conf.beat_schedule = {
 #     "cleanup-old-jobs": {

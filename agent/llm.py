@@ -65,7 +65,8 @@ def call_llm(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "temperature": 0.0,
+        "temperature": 0.2,
+        "max_tokens": settings.LLM_MAX_TOKENS,
     }
     if response_format:
         kwargs["response_format"] = response_format
