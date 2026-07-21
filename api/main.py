@@ -29,10 +29,8 @@ app = FastAPI(
 instrumentator = Instrumentator(
     should_group_status_codes=True,
     should_ignore_untemplated=True,
-    should_respect_env_var=True,
     should_instrument_requests_inprogress=True,
     excluded_handlers=["/health", "/metrics"],  # avoid double-counting
-    env_var_name="ENABLE_METRICS",
     inprogress_name="http_requests_inprogress",
     inprogress_labels=True,
 )
