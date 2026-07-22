@@ -36,6 +36,17 @@ repos:
         pass_filenames: false
         require_serial: true
 
+  # Run the full test suite (mimics CI)
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (docker)
+        entry: docker compose -f deployments/docker-compose/docker-compose.yml exec -T api python -m pytest --cov=api --cov=agent --cov=workers --cov-report=term-missing --cov-fail-under=70
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.6
     hooks:

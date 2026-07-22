@@ -12,12 +12,13 @@ RUN mkdir -p /app/uploads && chown -R nobody:nogroup /app/uploads
 
 # Install system dependencies for psycopg2/asyncpg
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev && \
+    build-essential libpq-dev libmagic1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN python -m spacy download en_core_web_lg
 
 # Copy project code (will be overridden by volume mount in dev, but needed for prod)
 COPY . .

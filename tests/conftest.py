@@ -5,6 +5,7 @@ import tempfile
 
 import nest_asyncio
 import pytest
+import redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -55,6 +56,13 @@ def override_upload_dir():
     os.environ["UPLOAD_DIR"] = tmpdir
     yield
     shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def clear_rate_limits():
+    """Reset all Redis keys before each test – guarantees clean rate limits."""
+    r = redis.from_url(settings.CELERY_BROKER_URL)
+    r.flushdb()
 
 
 # ── Per‑test transactional session (savepoint) ──────────────

@@ -4,7 +4,7 @@ import time
 
 import pandas as pd
 from celery.utils.log import get_task_logger
-from prometheus_client import CollectorRegistry, Counter, Histogram, push_to_gateway
+from prometheus_client import push_to_gateway
 from sqlalchemy import select
 
 from agent.data_utils import build_dataframe_info, validate_csv
@@ -14,32 +14,18 @@ from api.core.sync_database import SessionLocal
 from api.models.job import Job, JobStatus
 from api.services.file_service import _get_upload_dir
 from workers.celery_app import celery_app
+from workers.metrics import (
+    JOB_COMPLETED,
+    JOB_DURATION,
+    JOB_FAILED,
+    PUSHGATEWAY_URL,
+    SANDBOX_ERRORS,
+    worker_registry,
+)
 
 logger = get_task_logger(__name__)
 
 AGENT_TIMEOUT = int(os.getenv("AGENT_TIMEOUT", "300"))
-
-# Worker‑local Prometheus registry and metrics
-worker_registry = CollectorRegistry()
-
-JOB_COMPLETED = Counter(
-    "jobs_completed_total",
-    "Total number of successfully completed analysis jobs",
-    registry=worker_registry,
-)
-JOB_FAILED = Counter(
-    "jobs_failed_total",
-    "Total number of failed analysis jobs",
-    registry=worker_registry,
-)
-JOB_DURATION = Histogram(
-    "job_duration_seconds",
-    "Processing time per job",
-    buckets=[1, 5, 10, 30, 60, 120, 300],
-    registry=worker_registry,
-)
-
-PUSHGATEWAY_URL = os.getenv("PUSHGATEWAY_URL", "http://pushgateway:9091")
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +91,17 @@ def perform_analysis(job_id: str) -> None:
 
         # 3. Run agent (synchronous, uses a thread internally for timeout)
         result = run_agent_with_timeout(state, AGENT_TIMEOUT)
+
+        # Count sandbox errors
+        logger.info(
+            f"execution_results count: {len(result.get('execution_results', []))}"
+        )
+        for exec_res in result.get("execution_results", []):
+            has_error = exec_res.get("error") or "Traceback" in exec_res.get(
+                "stderr", ""
+            )
+            if has_error:
+                SANDBOX_ERRORS.inc()
 
         if "error" in result:
             job.status = JobStatus.FAILED
@@ -197,3 +194,9 @@ def process_analysis(self, job_id: str):
                 grouping_key={"instance": socket.gethostname()},
                 registry=worker_registry,
             )
+
+
+@celery_app.task
+def cleanup_old_jobs():
+    # delete old files, expired jobs, etc.
+    logger.info("Running cleanup task")

@@ -34,7 +34,7 @@ services:
       context: ../../  # repo root
       dockerfile: Dockerfile
     container_name: ds-api
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    command: /app/scripts/prestart.sh uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     volumes:
@@ -159,6 +159,7 @@ services:
     container_name: ds-prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus:/etc/prometheus/alerts
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
@@ -172,9 +173,24 @@ services:
     ports:
       - "9091:9091"
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ds-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin       # change in production
+      # - GF_INSTALL_PLUGINS=grafana-piechart-panel  # optional
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning   # auto-config
+      - ./grafana/dashboards:/var/lib/grafana/dashboards   # dashboard JSON
+
 
 volumes:
-  prometheus_data:
   postgres_data:
   upload_data:
   ollama_data:
+  prometheus_data:
+  grafana_data:

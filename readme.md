@@ -278,19 +278,6 @@ The project includes:
 
 ---
 
-# 🗺 Roadmap
-
-- [ ] Multi-turn conversations
-- [ ] Streaming agent progress
-- [ ] Prompt A/B testing
-- [ ] Kubernetes deployment
-- [ ] Prometheus metrics
-- [ ] Grafana dashboards
-- [ ] PII detection and redaction
-- [ ] Support for local LLMs (vLLM)
-
----
-
 # 👤 Author
 
 **Mohammad Amin Sheikhani**

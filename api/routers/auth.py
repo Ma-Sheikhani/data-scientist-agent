@@ -1,8 +1,10 @@
 """Endpoints for user registration and login."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.core.limiter import limiter
 
 from ..core.database import get_db
 from ..core.security import create_access_token, get_password_hash, verify_password
@@ -33,7 +35,10 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/token", response_model=Token)
-async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(
+    request: Request, user_in: UserLogin, db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(user_in.password, user.hashed_password):

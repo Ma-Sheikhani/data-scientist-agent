@@ -28,9 +28,16 @@ celery_app.conf.update(
 
 celery_app.conf.imports = ("workers.tasks",)
 
-# celery_app.conf.beat_schedule = {
-#     "cleanup-old-jobs": {
-#         "task": "workers.tasks.cleanup_old_jobs",
-#         "schedule": 3600.0,  # every hour (in seconds)
-#     },
-# }
+celery_app.conf.beat_schedule = {
+    "cleanup-old-jobs": {
+        "task": "workers.tasks.cleanup_old_jobs",
+        "schedule": 3600.0,  # every hour
+    },
+    "heartbeat": {
+        "task": "heartbeat",
+        "schedule": 30.0,  # every 30 seconds
+    },
+}
+
+import workers.beat_tasks  # noqa: E402, F401 (beat schedule & heartbeat)
+import workers.tasks  # noqa: E402, F401 (process_analysis, cleanup_old_jobs)

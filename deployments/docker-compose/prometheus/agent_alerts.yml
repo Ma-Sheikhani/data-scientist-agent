@@ -1,0 +1,112 @@
+groups:
+  - name: agent_alerts
+    interval: 30s
+    rules:
+      # 1. High API error rate (5xx)
+      - alert: HighAPIErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="api", status="5xx"}[1m]))
+          /
+          sum(rate(http_requests_total{job="api"}[1m]))
+          > 0
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High API error rate (>5%)"
+          description: "The 5xx error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      # 2. High job failure rate
+      - alert: HighJobFailureRate
+        expr: |
+          sum(rate(jobs_failed_total{job="celery_worker"}[5m]))
+          /
+          (sum(rate(jobs_completed_total{job="celery_worker"}[5m])) +
+          sum(rate(jobs_failed_total{job="celery_worker"}[5m])))
+          > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "High job failure rate (>10%)"
+          description: "{{ $value | humanizePercentage }} of jobs failed over the last 5 minutes."
+
+      # 3. Sandbox execution errors
+      - alert: HighSandboxErrorRate
+        expr: rate(sandbox_execution_errors_total{job="celery_worker"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: sandbox
+        annotations:
+          summary: "Elevated sandbox execution errors"
+          description: "Sandbox errors rate is {{ $value }} per second. Check agent code quality."
+
+      # 4. Celery worker heartbeat (Pushgateway)
+      - alert: CeleryWorkerDown
+        expr: (time() - push_time_seconds{job="celery_worker"}) > 90
+        for: 2m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Celery worker heartbeat lost"
+          description: "The beat process has not pushed metrics for more than 90 seconds ({{ $value }}s since last push)."
+
+
+# # use following for tests
+
+# groups:
+#   - name: agent_alerts_test
+#     interval: 30s
+#     rules:
+#       - alert: HighAPIErrorRate
+#         expr: |
+#           sum(rate(http_requests_total{job="api", status="5xx"}[1m]))
+#           /
+#           sum(rate(http_requests_total{job="api"}[1m]))
+#           > 0
+#         for: 0s
+#         labels:
+#           severity: critical
+#           component: api
+#         annotations:
+#           summary: "High API error rate (>5%)"
+#           description: "Test alert - high 5xx rate: {{ $value | humanizePercentage }}"
+
+#       - alert: HighJobFailureRate
+#         expr: |
+#           sum(rate(jobs_failed_total{job="celery_worker"}[1m]))
+#           /
+#           (sum(rate(jobs_completed_total{job="celery_worker"}[1m])) +
+#           sum(rate(jobs_failed_total{job="celery_worker"}[1m])))
+#           > 0.1
+#         for: 0s
+#         labels:
+#           severity: critical
+#           component: worker
+#         annotations:
+#           summary: "High job failure rate (>10%)"
+#           description: "Test alert - failure rate: {{ $value | humanizePercentage }}"
+
+#       - alert: HighSandboxErrorRate
+#         expr: rate(sandbox_execution_errors_total{job="celery_worker"}[1m]) > 0.05
+#         for: 0s
+#         labels:
+#           severity: warning
+#           component: sandbox
+#         annotations:
+#           summary: "Elevated sandbox execution errors"
+#           description: "Test alert - sandbox errors/s: {{ $value }}"
+
+#       - alert: CeleryWorkerDown
+#         expr: (time() - push_time_seconds{job="celery_worker"}) > 10
+#         for: 0s
+#         labels:
+#           severity: critical
+#           component: worker
+#         annotations:
+#           summary: "Celery worker heartbeat lost"
+#           description: "Test alert - last push was {{ $value }}s ago"
