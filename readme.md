@@ -6,9 +6,9 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **An industrial-grade AI Data Scientist that autonomously plans analyses, writes Python code, executes it securely inside a sandbox, reflects on the results, and produces explainable reports from CSV datasets.**
+> **An industrial-grade AI Data Scientist that autonomously plans analyses, generates Python code, executes it securely inside a sandbox, reflects on the results, and produces explainable reports from CSV datasets.**
 
-Built with **FastAPI**, **LangGraph**, **Celery**, **PostgreSQL**, **Redis**, **Prometheus**, **Grafana**, and **Docker** using production-ready software engineering practices.
+Built with **FastAPI**, **LangGraph**, **Celery**, **PostgreSQL**, **Redis**, **Prometheus**, **Grafana**, **n8n**, and **Docker** using production-ready software engineering practices.
 
 ---
 
@@ -22,15 +22,16 @@ Built with **FastAPI**, **LangGraph**, **Celery**, **PostgreSQL**, **Redis**, **
 - 🔐 JWT authentication with configurable rate limiting
 - 🔍 Optional PII redaction using Microsoft Presidio
 - 📈 Full observability with Prometheus, Grafana, Flower, and Langfuse
-- 🛡️ Input validation (MIME type, file size, request validation)
+- 🛡️ Input validation (MIME type, file size, and request validation)
 - 🐘 PostgreSQL with SQLAlchemy Async
 - 📦 Dockerized microservice architecture
-- 🧪 Comprehensive testing (unit, integration, and load)
+- 🧪 Comprehensive testing (unit, integration, and load testing)
+- 🎛️ **Optional n8n low-code UI** with ready-to-use workflows
 - 🚀 Production-oriented project structure
 
 ---
 
-# 🏗 Architecture
+# 🏗️ Architecture
 
 ```mermaid
 graph TD
@@ -52,39 +53,40 @@ graph TD
 
 ## Request Flow
 
-1. The client uploads a CSV file and a natural-language question.
-2. FastAPI validates the request, optionally redacts PII, stores job metadata in PostgreSQL, and enqueues a Celery task.
-3. Redis delivers the task to a Celery worker.
-4. The worker invokes the LangGraph agent.
+1. The client uploads a CSV file together with a natural-language question.
+2. **FastAPI** validates the request, optionally redacts PII, stores job metadata in PostgreSQL, and enqueues a Celery task.
+3. **Redis** delivers the task to a Celery worker.
+4. The worker invokes the **LangGraph** agent.
 5. The agent:
-   - plans the analysis,
-   - generates Python code,
-   - executes the code inside the sandbox,
-   - evaluates the results,
-   - repeats the process if necessary,
-   - synthesizes the final report.
+   - Plans the analysis.
+   - Generates Python code.
+   - Executes the code inside the sandbox.
+   - Evaluates the results.
+   - Repeats the process if necessary.
+   - Synthesizes the final report.
 6. The completed report is stored in PostgreSQL and returned through the API.
-7. Prometheus collects metrics from the API and workers, while Grafana visualizes dashboards.
+7. **Prometheus** collects metrics from the API and workers, while **Grafana** visualizes dashboards.
 
 ---
 
-# 🛠 Tech Stack
+# 🛠️ Tech Stack
 
 | Category | Technologies |
-|-----------|--------------|
-| API | FastAPI, Pydantic v2 |
-| Database | PostgreSQL, SQLAlchemy 2.0 (Async), Alembic |
-| Queue | Celery, Redis |
-| AI Agent | LangGraph |
-| LLM | OpenRouter (or any OpenAI-compatible provider), local Ollama or vLLM |
-| Sandbox | FastAPI-based isolated Docker container |
-| Authentication | JWT, bcrypt |
-| Security | SlowAPI (rate limiting), Microsoft Presidio (PII redaction), request validation |
-| Monitoring | Prometheus, Pushgateway, Grafana, Loguru |
-| Observability | Langfuse, Flower |
-| Containerization | Docker, Docker Compose |
-| Testing | Pytest, pytest-asyncio, Testcontainers |
-| Code Quality | Black, isort, Flake8, mypy, Bandit |
+|----------|--------------|
+| **API** | FastAPI, Pydantic v2 |
+| **Database** | PostgreSQL, SQLAlchemy 2.0 (Async), Alembic |
+| **Queue** | Celery, Redis |
+| **AI Agent** | LangGraph |
+| **LLM** | OpenRouter (or any OpenAI-compatible provider), Ollama, vLLM |
+| **Sandbox** | FastAPI-based isolated Docker container |
+| **Authentication** | JWT, bcrypt |
+| **Security** | SlowAPI (rate limiting), Microsoft Presidio (PII redaction), request validation |
+| **Monitoring** | Prometheus, Pushgateway, Grafana, Loguru |
+| **Observability** | Langfuse, Flower |
+| **UI (Low-Code)** | n8n (self-hosted workflow automation) |
+| **Containerization** | Docker, Docker Compose |
+| **Testing** | Pytest, pytest-asyncio, Testcontainers |
+| **Code Quality** | Black, isort, Flake8, mypy, Bandit |
 
 ---
 
@@ -96,40 +98,41 @@ graph TD
 - Docker
 - Docker Compose
 
-## Clone the repository
+## Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/data-scientist-agent.git
-
+git clone https://github.com/Ma-Sheikhani/data-scientist-agent.git
 cd data-scientist-agent
 ```
 
-## Configure environment variables
+## Configure Environment Variables
+
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Required:
+Required variables:
 
-```text
+```env
 OPENROUTER_API_KEY=your_api_key
 ```
 
-Optional:
+Optional variables:
 
-```text
+```env
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 ```
 
-## Start the application
+## Start the Application
 
 ```bash
 docker compose up --build
 ```
 
-The stack starts:
+This starts the complete application stack:
 
 - FastAPI
 - PostgreSQL
@@ -139,28 +142,36 @@ The stack starts:
 - Prometheus
 - Pushgateway
 - Grafana
+- n8n
 
-### Available services
+---
+
+## Available Services
 
 | Service | URL |
-|----------|-----|
+|---------|-----|
 | API Documentation | http://localhost:8000/docs |
 | Grafana | http://localhost:3000 |
 | Prometheus | http://localhost:9090 |
-| Flower (optional) | http://localhost:5555 |
+| Flower *(optional)* | http://localhost:5555 |
+| n8n | http://localhost:5678 |
 
-Default Grafana credentials:
+### Default Grafana Credentials
 
 ```text
 Username: admin
 Password: admin
 ```
 
+> **Note:** The first person to open the n8n web interface becomes the workspace owner. You can optionally enable basic authentication by configuring the `N8N_BASIC_AUTH_*` environment variables in `docker-compose.yml`.
+
 ---
 
 # 📖 Usage
 
-## Register
+## 🔧 Programmatic API (cURL / HTTP)
+
+### Register
 
 ```bash
 curl -X POST http://localhost:8000/auth/register \
@@ -168,7 +179,7 @@ curl -X POST http://localhost:8000/auth/register \
   -d '{"email":"demo@example.com","password":"strongpassword"}'
 ```
 
-## Login
+### Login
 
 ```bash
 curl -X POST http://localhost:8000/auth/token \
@@ -178,7 +189,7 @@ curl -X POST http://localhost:8000/auth/token \
 
 Save the returned JWT access token.
 
-## Submit an analysis
+### Submit an Analysis
 
 ```bash
 curl -X POST http://localhost:8000/v1/analyze \
@@ -187,22 +198,14 @@ curl -X POST http://localhost:8000/v1/analyze \
   -F "question=What is the average sepal length by species? Create a bar chart."
 ```
 
-Example response:
-
-```json
-{
-  "job_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-}
-```
-
-## Poll for results
+### Poll for Results
 
 ```bash
 curl http://localhost:8000/v1/analyze/<JOB_ID>/status \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-When the job completes, the response contains:
+Once the job completes, the response includes:
 
 - Summary
 - Statistics
@@ -211,20 +214,80 @@ When the job completes, the response contains:
 
 ---
 
+# 🎛️ Using the n8n UI (No-Code)
+
+If you prefer a point-and-click interface, the project includes a self-hosted **n8n** instance with ready-to-use workflows.
+
+## Import the Workflows
+
+1. Open **http://localhost:5678** and create an account (the first user becomes the workspace owner).
+2. Navigate to **Workflows → Import from File**.
+3. Import each workflow from:
+
+```text
+deployments/n8n/workflows/
+```
+
+Available workflows include:
+
+- `full-analysis.json` — Complete workflow for registration, authentication, dataset upload, analysis submission, polling, and result display.
+- Individual workflows for:
+  - User registration
+  - User login
+  - Analysis submission
+  - Result polling
+
+4. Activate each workflow by enabling the **Active** toggle.
+
+## Use the "Full Analysis" Workflow
+
+The `full-analysis.json` workflow can be used in two different modes.
+
+### Webhook Mode
+
+Send a `POST` request using `multipart/form-data` containing:
+
+- Email
+- Password
+- CSV file
+- Analysis question
+
+### Form Mode (Recommended)
+
+Replace the **Webhook** trigger with a **Form** node.
+
+Configure the following fields:
+
+- Email
+- Password
+- Question
+- File Upload
+
+Activate the workflow and share the generated public URL.
+
+Users can then open the form directly in their browser, upload a dataset, ask a question, and receive an AI-generated analysis without writing any code.
+
+For more details, see the [n8n UI Guide](docs/N8N.md).
+
+---
+
 # 📁 Project Structure
 
 ```text
 data-scientist-agent/
-├── api/
-├── agent/
-├── workers/
-├── sandbox/
+├── api/                     # FastAPI application
+├── agent/                   # LangGraph agent
+├── workers/                 # Celery workers
+├── sandbox/                 # Secure Python execution service
 ├── deployments/
-│   ├── docker-compose/
-│   └── helm/
-├── docs/
-├── tests/
-├── .github/workflows/
+│   ├── docker-compose/      # Docker Compose configuration
+│   ├── helm/                # Helm chart (work in progress)
+│   └── n8n/
+│       └── workflows/       # Exported n8n workflow JSON files
+├── docs/                    # Project documentation
+├── tests/                   # Unit, integration, security, and load tests
+├── .github/
+│   └── workflows/           # GitHub Actions CI
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml
@@ -237,25 +300,26 @@ data-scientist-agent/
 
 | Document | Description |
 |----------|-------------|
-| `docs/ARCHITECTURE.md` | Overall system architecture |
-| `docs/AGENT.md` | LangGraph agent internals |
-| `docs/API.md` | REST API documentation |
-| `docs/DEPLOYMENT.md` | Deployment guide |
-| `docs/OPERATIONS.md` | Monitoring and troubleshooting |
-| `docs/PERFORMANCE.md` | Load testing |
-| `docs/SECURITY.md` | Security architecture |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Overall system architecture |
+| [AGENT.md](docs/AGENT.md) | LangGraph agent internals |
+| [API.md](docs/API.md) | REST API documentation |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment guide |
+| [N8N.md](docs/N8N.md) | n8n setup, workflows, and demo guide |
+| [OPERATIONS.md](docs/OPERATIONS.md) | Monitoring and troubleshooting |
+| [PERFORMANCE.md](docs/PERFORMANCE.md) | Performance and load testing |
+| [SECURITY.md](docs/SECURITY.md) | Security architecture |
 
 ---
 
 # 🧪 Testing
 
-Run all tests:
+Run the complete test suite:
 
 ```bash
 docker compose exec api poetry run pytest
 ```
 
-Run with coverage:
+Run the tests with coverage:
 
 ```bash
 docker compose exec api poetry run pytest \
@@ -268,59 +332,108 @@ docker compose exec api poetry run pytest \
 
 The project includes:
 
-- Unit tests
-- Integration tests
-- Load tests
-- Static type checking (`mypy`)
-- Security scanning (`Bandit`)
+- ✅ Unit tests
+- ✅ Integration tests
+- ✅ Load tests
+- ✅ Static type checking with **mypy**
+- ✅ Security scanning with **Bandit**
 
 ---
 
 # 🔒 Security
 
-- JWT authentication
+The project incorporates multiple layers of security:
+
+- JWT-based authentication
 - bcrypt password hashing
-- Configurable rate limiting
+- Configurable API rate limiting
 - Optional Microsoft Presidio PII redaction
-- Request validation and file validation
+- Request validation
+- File type and size validation
 - Sandboxed execution inside an isolated Docker container
-- Read-only filesystem
+- Read-only execution environment
 - Restricted Python module whitelist
 - Execution timeouts
 - Environment-based secrets management
 
 ---
 
-# 📊 Monitoring
+# 📊 Monitoring & Observability
 
-The application exposes Prometheus metrics for both the API and Celery workers.
+The application exports **Prometheus** metrics for both the API and Celery workers.
 
-Grafana dashboards include:
+### Grafana Dashboards
+
+Included dashboards monitor:
 
 - API request rate
-- Request latency (P50/P95/P99)
+- Request latency (P50 / P95 / P99)
 - Error rate
 - Job completion rate
 - Job duration
 - Sandbox execution failures
-- Worker health
+- Celery worker health
 
-Example alerting rules include:
+### Example Alerting Rules
+
+Typical alert rules include:
 
 - High API error rate
 - High job failure rate
 - Worker heartbeat loss
-- Elevated sandbox failures
+- Elevated sandbox failure rate
+
+Additional observability tools include:
+
+- **Langfuse** for LLM tracing and evaluation
+- **Flower** for Celery task monitoring
 
 ---
 
+# 📄 License
+
+This project is licensed under the **MIT License**.
+
+See the [LICENSE](LICENSE) file for details.
+
+---
 
 # 👤 Author
 
 **Mohammad Amin Sheikhani**
 
-📧 mash473@gmail.com
+📧 **mash473@gmail.com**
 
 ---
 
-> **Data Scientist Agent** demonstrates modern AI engineering by combining LLM orchestration, secure code execution, asynchronous microservices, observability, and production-ready software engineering into a single end-to-end system.
+# ⭐ Acknowledgements
+
+This project builds upon several outstanding open-source technologies, including:
+
+- FastAPI
+- LangGraph
+- Celery
+- PostgreSQL
+- Redis
+- SQLAlchemy
+- Docker
+- Prometheus
+- Grafana
+- n8n
+- Langfuse
+- OpenRouter
+
+---
+
+# 💡 About the Project
+
+**Data Scientist Agent** demonstrates a modern AI engineering architecture by combining:
+
+- Autonomous LLM orchestration
+- Secure Python code execution
+- Asynchronous microservices
+- Production-grade observability
+- Low-code automation with n8n
+- Scalable Docker-based deployment
+
+The goal is to provide an end-to-end AI system capable of autonomously analyzing datasets, generating insights, creating visualizations, and producing explainable reports using natural-language instructions.

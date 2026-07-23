@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -9,25 +10,37 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from alembic import command
+from alembic.config import Config
+from api.core.config import settings
+from api.core.database import Base, engine
 from api.core.limiter import limiter
 
-from .core.config import settings
-from .core.database import engine
 from .routers import analysis, auth
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables (for dev; later we'll use migrations)
-    # async with engine.begin() as conn:
-    #     await conn.run_sync(Base.metadata.create_all)
+    """Automatically migrate the database on startup."""
+    try:
+        alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrated to latest version.")
+    except Exception as e:
+        logger.warning(f"Alembic migration failed ({e}). Creating tables from models.")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Tables created via create_all.")
     yield
     await engine.dispose()
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    version="0.1.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 

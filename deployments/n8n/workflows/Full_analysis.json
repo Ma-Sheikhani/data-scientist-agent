@@ -1,0 +1,461 @@
+{
+  "name": "Full_analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=http://api:8000/v1/analyze/{{ $node[\"request\"].json.id }}/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $node[\"login\"].json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -912,
+        208
+      ],
+      "id": "ea6caba8-c98b-4852-ad41-a1c88f52cc54",
+      "name": "HTTP Request",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "42f648a4-8290-4b13-be6f-3b1fbf88c3f7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "completed"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "abc7467c-7ab3-40e4-b415-9db45ccde599",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "failed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "failed"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -688,
+        32
+      ],
+      "id": "f7ce1a93-0a75-477e-ab14-6164a91ade18",
+      "name": "Switch"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        320
+      ],
+      "id": "ef13d055-725d-49a5-ab73-faed7b071e5a",
+      "name": "Wait",
+      "webhookId": "f1dd8d08-09cf-476a-9b9c-3d044c3c7213"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "45654ba5-5e02-4020-8be2-1788e1706cc8",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "9e4ef1a1-8175-4303-918a-655c07bce4bb",
+              "name": "detail",
+              "value": "The analysis job failed.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -464,
+        128
+      ],
+      "id": "05336c4a-9687-408b-98b2-c6edb6b233e4",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "30c06345-b9de-4b05-9369-e47951813174",
+              "name": "summary",
+              "value": "={{ $json.result.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "d4eb943d-10e2-423a-acb1-b0a26e384650",
+              "name": "statistics",
+              "value": "={{ $json.result.statistics }}",
+              "type": "string"
+            },
+            {
+              "id": "402c8203-ffed-49bb-bc6a-d1b9556426d4",
+              "name": "figures",
+              "value": "={{ $json.result.figures }}",
+              "type": "string"
+            },
+            {
+              "id": "94b3bf21-c573-41a3-b46f-f95f22501e07",
+              "name": "tables",
+              "value": "={{ $json.result.tables }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -464,
+        -64
+      ],
+      "id": "7434bf17-2e31-44eb-8922-dfa1ad2f18e5",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -240,
+        -64
+      ],
+      "id": "5c6c8a3c-671c-4ee1-9d94-f9b508094d5e",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -240,
+        128
+      ],
+      "id": "d7d3904f-0ea7-4b65-9ec9-3e7899b94d98",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/full-analysis",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1584,
+        416
+      ],
+      "id": "37af958e-c159-46d0-a514-2ee5f6a67ee7",
+      "name": "start",
+      "webhookId": "9a9c5424-b295-48ff-8b0c-5a2329567385"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/auth/register",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $node[\"start\"].json.body.email }}\",\n  \"password\": \"{{ $node[\"start\"].json.body.password }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -896,
+        592
+      ],
+      "id": "246b5a97-c539-4155-9df7-817a92798bf3",
+      "name": "HTTP Request1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        496
+      ],
+      "id": "d24a2d5a-79b1-4654-8308-95b4933b0111",
+      "name": "Wait1",
+      "webhookId": "06a45301-cbba-4782-9ef5-5475707ecd47"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/auth/token",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $node[\"start\"].json.body.email }}\",\n  \"password\": \"{{ $node[\"start\"].json.body.password }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1360,
+        416
+      ],
+      "id": "d5573e1e-1b0c-47d1-8dfc-6cbcd0eca78c",
+      "name": "login",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/v1/analyze",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $node[\"login\"].json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "={{ $node[\"start\"].binary.file0 }}"
+            },
+            {
+              "name": "question",
+              "value": "={{ $node[\"start\"].json.body.question }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1136,
+        208
+      ],
+      "id": "0d1045d0-f954-48d7-b3a1-ff523b8b6135",
+      "name": "request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "start": {
+      "main": [
+        [
+          {
+            "node": "login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "login": {
+      "main": [
+        [
+          {
+            "node": "request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3c2d92a3-b707-4d5f-95cd-a1896c5fd1f9",
+  "meta": {
+    "instanceId": "03251c6b7875e8a5b3ea1e548e4283b68b347195015126414d700152b378e00d"
+  },
+  "id": "7b5S6PO8JeeXuqKH",
+  "tags": []
+}

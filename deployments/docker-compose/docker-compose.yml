@@ -187,6 +187,20 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning   # auto-config
       - ./grafana/dashboards:/var/lib/grafana/dashboards   # dashboard JSON
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ds-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - default   # ensures n8n can reach api, postgres, etc.
+
 
 volumes:
   postgres_data:
@@ -194,3 +208,4 @@ volumes:
   ollama_data:
   prometheus_data:
   grafana_data:
+  n8n_data:

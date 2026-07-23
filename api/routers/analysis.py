@@ -1,5 +1,6 @@
 """Endpoints for analysis job submission and status."""
 
+import base64
 import logging
 import os
 import re
@@ -9,6 +10,8 @@ from pathlib import Path
 import magic
 import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.limiter import limiter
@@ -104,3 +107,54 @@ async def submit_analysis(
     # Increment metric
     ANALYSIS_REQUESTS.labels(status="submitted").inc()
     return job
+
+
+@router.get("/analyze/{job_id}/status", response_model=JobStatusResponse)
+async def get_job_status(
+    job_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve the current status of an analysis job."""
+    result = await db.execute(
+        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
+    )
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+@router.get("/analyze/{job_id}/figure/{index}")
+async def get_figure(
+    job_id: uuid.UUID,
+    index: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
+    )
+    job = result.scalar_one_or_none()
+    if not job or not job.result:
+        raise HTTPException(status_code=404, detail="Job or figure not found")
+
+    images = job.result.get("images", [])
+    if index < 0 or index >= len(images):
+        raise HTTPException(status_code=404, detail="Figure index out of range")
+
+    img_bytes = base64.b64decode(images[index])
+    return Response(content=img_bytes, media_type="image/png")
+
+
+@router.get("/agent-health")
+async def agent_health():
+    import httpx
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{SANDBOX_URL}/docs")  # just a ping
+        sandbox_ok = resp.status_code == 200
+    except Exception:
+        sandbox_ok = False
+    return {"sandbox": sandbox_ok}

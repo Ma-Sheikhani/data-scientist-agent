@@ -1,0 +1,66 @@
+{
+  "name": "login",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/login",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "18e15d55-212a-49e5-9dbb-73f4ea247cc3",
+      "name": "Webhook",
+      "webhookId": "ddc12b27-5aa4-4864-aeae-a225f459ef4d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/auth/token",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $json.body.email }}\",\n  \"password\": \"{{ $json.body.password }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2c6a3b0c-8a02-460f-89fa-b01f2fecd1aa",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ebe38ebc-967f-4fe0-8e22-729f112424a8",
+  "meta": {
+    "instanceId": "03251c6b7875e8a5b3ea1e548e4283b68b347195015126414d700152b378e00d"
+  },
+  "id": "2z7kv7l6HzjAlhWf",
+  "tags": []
+}
